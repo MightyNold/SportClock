@@ -541,16 +541,35 @@ const TEMPLATES = [
   W('Boxe 3×3 min', '#e84393', {}, [B('interval', { work: 180, rest: 60, rounds: 6 })]),
 ];
 
-function migrate(p) {
-  if (p.v === 2 && Array.isArray(p.blocks)) return { ...newWorkout(), ...p, blocks: p.blocks.map(b => ({ ...newBlock(b.type), ...b })) };
-  return { ...newWorkout(), id: p.id || uid(), name: p.name || '', color: p.color || COLORS[0], prep: p.prep ?? 10, cool: p.cool || 0,
-    blocks: [{ ...newBlock('interval'), work: p.work ?? 30, rest: p.rest ?? 15, rounds: p.rounds ?? 8, sets: p.sets ?? 1, setRest: p.setRest ?? 60,
-      skipLastRest: p.skipLastRest !== false, exercises: p.exercises || [] }] };
+/* Sanitize anything coming from storage, a shared link or an imported file (untrusted). */
+const safeColor = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : COLORS[0];
+const safeId = v => typeof v === 'string' && /^[a-z0-9]{1,16}$/i.test(v) ? v : uid();
+const num = (v, d, min, max) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? clamp(n, min, max) : d; };
+const str = (v, max = 80) => typeof v === 'string' ? v.slice(0, max) : '';
+function cleanBlock(b) {
+  b = b && typeof b === 'object' ? b : {};
+  const type = Object.hasOwn(TYPES, b.type) ? b.type : 'interval', d = newBlock(type);
+  return { id: safeId(b.id), type, name: str(b.name, 40),
+    work: num(b.work, d.work, 0, 7200), rest: num(b.rest, d.rest, 0, 7200), rounds: num(b.rounds, d.rounds, 1, 99),
+    sets: num(b.sets, 1, 1, 20), setRest: num(b.setRest, 60, 0, 7200), skipLastRest: b.skipLastRest !== false, restAfter: num(b.restAfter, 60, 0, 7200),
+    exercises: (Array.isArray(b.exercises) ? b.exercises : []).slice(0, 50).map(e => typeof e === 'string' ? { name: str(e), dur: 0, note: '' }
+      : { name: str(e?.name), dur: num(e?.dur, 0, 0, 7200), note: str(e?.note, 120) }) };
 }
+function migrate(p) {
+  p = p && typeof p === 'object' ? p : {};
+  const blocks = Array.isArray(p.blocks) && p.blocks.length ? p.blocks.slice(0, 30).map(cleanBlock)
+    : [cleanBlock({ type: 'interval', work: p.work ?? 30, rest: p.rest ?? 15, rounds: p.rounds ?? 8, sets: p.sets, setRest: p.setRest,
+        skipLastRest: p.skipLastRest, exercises: p.exercises })];
+  return { v: 2, id: safeId(p.id), name: str(p.name, 40), color: safeColor(p.color), fav: p.fav === true,
+    prep: num(p.prep, 10, 0, 600), cool: num(p.cool, 0, 0, 3600), repeat: num(p.repeat, 1, 1, 20), repeatRest: num(p.repeatRest, 60, 0, 3600), blocks };
+}
+const cleanHist = h => ({ id: safeId(h?.id), wid: safeId(h?.wid), name: str(h?.name, 40), date: num(h?.date, Date.now(), 0, 9e15),
+  secs: num(h?.secs, 0, 0, 1e6), total: num(h?.total, 1, 1, 1e6), complete: h?.complete === true, color: safeColor(h?.color),
+  laps: num(h?.laps, 0, 0, 9999), forTime: h?.forTime ? num(h.forTime, 0, 0, 1e6) : null, rpe: h?.rpe ? num(h.rpe, 0, 1, 10) : undefined, note: str(h?.note, 300) });
 let profiles = store.get('profiles', null);
-if (!profiles) profiles = [clone(TEMPLATES[0]), clone(TEMPLATES[5]), clone(TEMPLATES[6])].map(w => ({ ...w, id: uid() }));
+if (!Array.isArray(profiles)) profiles = [clone(TEMPLATES[0]), clone(TEMPLATES[5]), clone(TEMPLATES[6])].map(w => ({ ...w, id: uid() }));
 profiles = profiles.map(migrate);
-let history = store.get('history', []);
+let history = (Array.isArray(store.get('history', [])) ? store.get('history', []) : []).map(cleanHist);
 const saveProfiles = () => store.set('profiles', profiles);
 const saveHistory = () => store.set('history', history);
 
@@ -1205,7 +1224,7 @@ $('#import-file').onchange = async e => {
     const data = JSON.parse(await f.text()); if (!Array.isArray(data.profiles)) throw 0;
     const ids = new Set(profiles.map(p => p.id));
     data.profiles.forEach(p => { p = migrate(p); if (ids.has(p.id)) p.id = uid(); profiles.push(p); });
-    if (Array.isArray(data.history)) { const hid = new Set(history.map(h => h.id)); history = [...history, ...data.history.filter(h => !hid.has(h.id))].sort((a, b) => b.date - a.date); saveHistory(); }
+    if (Array.isArray(data.history)) { const hid = new Set(history.map(h => h.id)); history = [...history, ...data.history.map(cleanHist).filter(h => !hid.has(h.id))].sort((a, b) => b.date - a.date); saveHistory(); }
     saveProfiles(); toast(`${data.profiles.length} séance(s) importée(s)`);
   } catch { toast('Fichier invalide'); }
   e.target.value = '';
