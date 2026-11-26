@@ -1,181 +1,197 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f1115">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SportClock">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preload" href="fonts/barlow-condensed-600.woff2" as="font" type="font/woff2" crossorigin>
 <title>SportClock — Minuteur d'entraînement</title>
 <style>
+  /* "Tableau d'affichage": black board, giant condensed digits. Colour is reserved for the phases; the rest of the interface is monochrome. */
+  @font-face { font-family: 'Barlow Condensed'; font-weight: 600; font-display: swap; src: url('fonts/barlow-condensed-600.woff2') format('woff2'); }
   :root {
-    --bg: #0f1115; --panel: #181b22; --panel2: #222632; --line: #2c3140;
-    --text: #f2f4f8; --muted: #8b93a7; --accent: #ff6b35;
-    --prep: #e0a800; --work: #ef4444; --rest: #22a565; --setrest: #3d7fe0;
-    --blockrest: #0f9fb5; --cool: #8b5cf6; --amrap: #f97316; --fortime: #db2777;
-    /* run-screen backgrounds: darker so white text keeps a contrast of at least 4.5 */
-    --prep-bg: #a16207; --work-bg: #dc2626; --rest-bg: #15803d; --setrest-bg: #1d4ed8;
-    --blockrest-bg: #0e7490; --cool-bg: #7c3aed; --amrap-bg: #c2410c; --fortime-bg: #be185d;
+    --bg: #000; --panel: #131316; --panel2: #1e1e22; --line: #2d2d33; --text: #f5f5f7; --muted: #9b9ba3;
+    --accent: #f5f5f7; --on-accent: #000;
+    --prep: #ffc21a; --work: #ff4d3d; --rest: #3ddc68; --setrest: #4da3ff;
+    --blockrest: #2ed3e6; --cool: #b18cff; --amrap: #ff8a1f; --fortime: #ff5fa2;
+    --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+    --tabs-h: calc(58px + env(safe-area-inset-bottom));
     --radius: 16px;
   }
-  [data-theme=light] { --bg: #f3f4f7; --panel: #ffffff; --panel2: #eef0f4; --line: #dde1e8; --text: #15171c; --muted: #687085; }
+  [data-theme=light] {
+    --bg: #fff; --panel: #f3f3f5; --panel2: #e7e7eb; --line: #d3d3da; --text: #0b0b0d; --muted: #5d5d66;
+    --accent: #0b0b0d; --on-accent: #fff;
+    --prep: #946200; --work: #d42b1e; --rest: #12813a; --setrest: #1d5fd1;
+    --blockrest: #0b7285; --cool: #6d3fd6; --amrap: #b84a00; --fortime: #c2185b;
+  }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; }
   html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 16px; line-height: 1.35; }
   body { display: flex; justify-content: center; }
-  #app { width: 100%; max-width: 520px; min-height: 100vh; display: flex; flex-direction: column; }
-  html { overscroll-behavior-y: none; } /* no pull-to-refresh in the middle of a session */
-  button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; touch-action: manipulation; }
+  #app { width: 100%; max-width: 520px; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+  button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; touch-action: manipulation; padding: 0;
+    -webkit-user-select: none; user-select: none; }
   button:focus-visible, [role=button]:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   button:disabled { opacity: .35; cursor: default; }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
   input, select, textarea { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line);
-    border-radius: 10px; padding: 10px 12px; width: 100%; }
+    border-radius: 12px; padding: 12px 14px; width: 100%; }
   input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  input::placeholder, textarea::placeholder { color: var(--muted); opacity: .8; }
   .hidden { display: none !important; }
-  small { font-size: 12px; }
+  small { font-size: 13px; }
+  .ic { width: 1.25em; height: 1.25em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; vertical-align: -.24em; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
-  header { display: flex; align-items: center; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) 18px 8px; }
-  header h1 { font-size: 22px; margin: 0; flex: 1; letter-spacing: -.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  header h1 span { color: var(--accent); }
-  .icon-btn { width: 42px; height: 42px; border-radius: 12px; background: var(--panel); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
-  .icon-btn.accent { background: var(--accent); color: #fff; }
-  .icon-btn:active, .btn:active { transform: scale(.96); }
-  main { flex: 1; padding: 6px 18px 110px; }
-  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 24px 0 10px; font-weight: 650;
-    display: flex; align-items: center; justify-content: space-between; }
+  header { display: flex; align-items: center; gap: 10px; padding: calc(18px + env(safe-area-inset-top)) 20px 6px; }
+  header h1 { font-family: var(--display); font-size: 34px; line-height: 1; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btn { width: 46px; height: 46px; border-radius: 50%; background: var(--panel2); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+  .icon-btn.accent { background: var(--accent); color: var(--on-accent); }
+  .icon-btn:active, .btn:active, .play:active { transform: scale(.95); }
+  main { flex: 1; padding: 6px 20px calc(var(--tabs-h) + 40px); }
+  h2 { font-family: var(--display); font-size: 24px; line-height: 1.1; margin: 30px 0 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  h2 .btn { font-family: system-ui, sans-serif; }
+  h2 .sub { font-family: system-ui, sans-serif; font-size: 13px; font-weight: 400; color: var(--muted); }
 
-  nav.tabs { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 520px; display: flex;
-    background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line);
-    padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
-  nav.tabs button { flex: 1; padding: 9px 0 11px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; }
-  nav.tabs .ic { font-size: 20px; }
-  nav.tabs button.active { color: var(--accent); font-weight: 600; }
+  nav.tabs { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 520px; height: var(--tabs-h); display: flex;
+    background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+  nav.tabs button { flex: 1; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+  nav.tabs .ic { width: 24px; height: 24px; }
+  nav.tabs button.active { color: var(--text); font-weight: 600; }
 
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 16px; border-radius: 12px; font-weight: 600; background: var(--panel2); }
-  .btn.primary { background: var(--accent); color: #fff; }
-  .btn.danger { background: color-mix(in srgb, #ef4444 18%, var(--panel)); color: #ef4444; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 50px; padding: 0 18px; border-radius: 14px; font-weight: 600; background: var(--panel2); }
+  .btn.primary { background: var(--accent); color: var(--on-accent); }
+  .btn.danger { background: color-mix(in srgb, var(--work) 16%, var(--panel)); color: var(--work); }
   .btn.block { width: 100%; }
-  .btn.small { padding: 8px 12px; font-size: 14px; }
-  .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+  .btn.small { min-height: 44px; padding: 0 14px; font-size: 15px; }
+  .btn.ghost { background: none; color: var(--muted); font-weight: 500; }
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; }
   .btn-row .btn { flex: 1; }
 
   /* Steppers */
-  .tstep { display: flex; align-items: stretch; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-  .tstep button { width: 40px; font-size: 20px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+  .tstep { display: flex; align-items: stretch; background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .tstep button { width: 46px; font-size: 24px; font-weight: 500; color: var(--text); flex-shrink: 0; }
   .tstep button:active { background: var(--line); }
-  .tstep input { border: none; background: none; text-align: center; font-weight: 700; font-size: 17px; padding: 9px 0; font-variant-numeric: tabular-nums; min-width: 0; border-radius: 0; }
-  .fld > label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 5px 2px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .tstep input { border: none; background: none; text-align: center; font-family: var(--display); font-size: 26px; line-height: 1; padding: 11px 0; font-variant-numeric: tabular-nums; min-width: 0; border-radius: 0; }
+  .fld > label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px 2px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
   /* Home */
-  .resume { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, var(--c, var(--accent)), color-mix(in srgb, var(--c, var(--accent)) 60%, #000)); color: #fff;
-    border-radius: var(--radius); padding: 16px; cursor: pointer; }
+  .resume { display: flex; align-items: center; gap: 14px; background: var(--panel); border-radius: var(--radius); padding: 16px 16px 16px 20px; cursor: pointer; position: relative; overflow: hidden; margin-top: 8px; }
+  .resume::before, .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--c); }
   .resume .t { flex: 1; min-width: 0; }
-  .resume small { opacity: .85; }
-  .resume b { display: block; font-size: 18px; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .resume .go { width: 52px; height: 52px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-size: 20px; }
-  .quick { background: var(--panel); border-radius: var(--radius); padding: 14px; }
-  .quick .fld > label { text-align: center; text-transform: uppercase; letter-spacing: .6px; font-size: 11px; }
-  .quick .tstep { flex-direction: column-reverse; }
-  .quick .tstep button { width: 100%; height: 42px; font-size: 22px; }
-  .quick .tstep input { font-size: 22px; padding: 4px 0; }
-  .quick .summary { color: var(--muted); font-size: 13px; margin: 10px 0 0; text-align: center; }
-  .templates { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; margin: 0 -18px; padding: 0 18px 4px; }
+  .resume small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .resume b { display: block; font-family: var(--display); font-size: 28px; line-height: 1.1; margin: 2px 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .resume .go { width: 58px; height: 58px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 22px; flex-shrink: 0; }
+  .quick .fld > label { text-align: center; margin-bottom: 8px; }
+  .quick .tstep { flex-direction: column-reverse; background: var(--panel); border: none; border-radius: var(--radius); }
+  .quick .tstep button { width: 100%; height: 46px; color: var(--muted); }
+  .quick .tstep input { font-size: 46px; padding: 0; }
+  .quick .tstep[data-q=work] input { color: var(--work); }
+  .quick .tstep[data-q=rest] input { color: var(--rest); }
+  .quick .summary { color: var(--muted); font-size: 14px; margin: 12px 0 0; text-align: center; }
+  .quick #quick-start { flex: 2; min-height: 56px; font-size: 17px; }
+  .templates { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 0 20px 4px; }
   .templates::-webkit-scrollbar { display: none; }
-  .templates button { flex-shrink: 0; background: var(--panel); border-radius: 14px; padding: 11px 14px; text-align: left; border-top: 3px solid var(--c); min-width: 120px; }
-  .templates b { display: block; font-size: 14px; }
-  .templates small { color: var(--muted); font-size: 11px; }
-  .search { margin-bottom: 10px; }
+  .templates button { flex-shrink: 0; background: var(--panel); border-radius: 14px; padding: 12px 16px 12px 14px; text-align: left; display: flex; gap: 10px; align-items: center; }
+  .templates i { width: 8px; height: 30px; border-radius: 4px; background: var(--c); flex-shrink: 0; }
+  .templates b { display: block; font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .templates small { color: var(--muted); white-space: nowrap; }
+  .search { margin-bottom: 6px; }
 
-  .card { background: var(--panel); border-radius: var(--radius); padding: 14px 12px 14px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; position: relative; overflow: hidden; }
-  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--c); }
-  .card .info { flex: 1; min-width: 0; cursor: pointer; }
-  .card .name { font-weight: 650; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card .meta { color: var(--muted); font-size: 13px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card .bar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; margin-top: 8px; gap: 1px; }
-  .star { font-size: 22px; color: var(--muted); width: 44px; height: 44px; flex-shrink: 0; }
-  .star.on { color: #f5b700; }
-  .play { width: 48px; height: 48px; border-radius: 50%; background: var(--c); color: #fff; font-size: 18px; display: grid; place-items: center; flex-shrink: 0; }
-  .empty { text-align: center; color: var(--muted); padding: 28px 10px; line-height: 1.5; }
+  .card { padding: 14px 0 14px 18px; display: flex; align-items: center; gap: 6px; position: relative; border-bottom: 1px solid var(--line); }
+  .card:last-child { border-bottom: none; }
+  .card::before { top: 14px; bottom: 14px; border-radius: 3px; }
+  .card .info { flex: 1; min-width: 0; cursor: pointer; padding: 2px 0; }
+  .card .name { font-weight: 600; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .meta { color: var(--muted); font-size: 14px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .bar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; margin-top: 9px; gap: 1px; opacity: .9; }
+  .star { font-size: 20px; color: var(--muted); width: 44px; height: 48px; flex-shrink: 0; display: grid; place-items: center; }
+  .star.on { color: var(--prep); }
+  .star.on .ic { fill: currentColor; }
+  .play { width: 52px; height: 52px; border-radius: 50%; border: 2px solid var(--text); color: var(--text); font-size: 19px; display: grid; place-items: center; flex-shrink: 0; }
+  .empty { text-align: center; color: var(--muted); padding: 36px 16px; line-height: 1.5; }
 
   /* Editor */
-  .section { background: var(--panel); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
-  .section > .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-  .section > .hd h3 { margin: 0; font-size: 15px; flex: 1; }
+  .section { background: var(--panel); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .section > .hd { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-  .block { border-left: 4px solid var(--bc); }
-  .block .num { width: 26px; height: 26px; border-radius: 8px; background: var(--bc); color: #fff; font-weight: 700; font-size: 13px; display: grid; place-items: center; flex-shrink: 0; }
-  .block .bname { flex: 1; font-weight: 650; padding: 7px 10px; }
-  .seg { display: flex; background: var(--panel2); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
-  .seg button { flex: 1; padding: 7px 2px; border-radius: 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
-  .seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
-  .exs { margin-top: 14px; }
-  .exs .lbl { font-size: 12px; color: var(--muted); margin: 0 0 6px 2px; }
-  .ex { display: grid; grid-template-columns: 20px 1fr 58px 36px 36px; gap: 6px; align-items: center; margin-bottom: 6px; }
-  .ex .n { color: var(--muted); font-size: 13px; text-align: right; }
-  .ex input { padding: 9px 8px; }
-  .ex .note { grid-column: 2 / 4; padding: 6px 8px; margin-top: -2px; color: var(--muted); } /* keep 16px: iOS zooms the page on smaller inputs */
-  .ex button { color: var(--muted); font-size: 16px; height: 42px; }
-  .ex.noDur { grid-template-columns: 20px 1fr 36px 36px; }
-  .ex.noDur .note { grid-column: 2 / 3; }
-  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
-  .toggle-row b { font-size: 14px; font-weight: 600; display: block; }
-  .toggle-row small { color: var(--muted); }
-  .hint { font-size: 12px; color: var(--muted); margin: 6px 2px 0; line-height: 1.4; }
-  .colors { display: flex; gap: 10px; flex-wrap: wrap; }
-  .colors button { width: 30px; height: 30px; border-radius: 50%; border: 3px solid transparent; }
-  .colors button.sel { border-color: var(--text); }
-  .addblock { border: 1px dashed var(--line); background: var(--panel); }
-  .typebtn { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; }
-  .typebtn .ic, .item.type .ic { font-size: 22px; width: 28px; text-align: center; flex-shrink: 0; }
+  .block .num { width: 30px; height: 30px; border-radius: 50%; background: var(--bc); color: #000; font-family: var(--display); font-size: 18px; display: grid; place-items: center; flex-shrink: 0; }
+  .block .bname { flex: 1; font-weight: 600; padding: 10px 12px; min-width: 0; }
+  .typebtn { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+  .tic { font-size: 22px; width: 28px; display: grid; place-items: center; flex-shrink: 0; color: var(--bc, var(--text)); }
   .typebtn .tx, .item.type .tx { flex: 1; min-width: 0; }
-  .typebtn b, .item.type b { display: block; font-size: 15px; }
+  .typebtn b, .item.type b { display: block; font-size: 16px; }
   .typebtn small, .item.type small { display: block; color: var(--muted); line-height: 1.3; margin-top: 1px; }
-  .item.type .chk { color: var(--accent); font-weight: 800; }
-  .total-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 520px; background: var(--panel);
-    border-top: 1px solid var(--line); padding: 10px 18px calc(10px + env(safe-area-inset-bottom)); z-index: 6; }
+  .seg { display: flex; background: var(--panel2); border-radius: 12px; padding: 3px; margin-bottom: 14px; }
+  .seg button { flex: 1; min-height: 40px; padding: 0 4px; border-radius: 9px; font-size: 14px; color: var(--muted); font-weight: 600; }
+  .seg button.on { background: var(--accent); color: var(--on-accent); }
+  .seg.mini { margin: 0; flex-shrink: 0; }
+  .seg.mini button { min-height: 34px; padding: 0 12px; font-size: 13px; }
+  .exs { margin-top: 16px; }
+  .exs .lbl { font-size: 13px; color: var(--muted); margin: 0 0 8px 2px; }
+  .ex { display: grid; grid-template-columns: 18px 1fr 58px 38px 38px; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .ex.noDur { grid-template-columns: 18px 1fr 38px 38px; }
+  .ex .n { color: var(--muted); font-size: 13px; text-align: right; }
+  .ex input { padding: 11px 10px; }
+  .ex .note { grid-column: 2 / 4; padding: 8px 10px; margin-top: -2px; color: var(--muted); } /* stays 16px: iOS zooms the page on smaller inputs */
+  .ex.noDur .note { grid-column: 2 / 3; }
+  .ex button { color: var(--muted); font-size: 17px; height: 46px; display: grid; place-items: center; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+  .toggle-row b { font-size: 15px; font-weight: 600; display: block; }
+  .toggle-row small { color: var(--muted); }
+  .hint { font-size: 13px; color: var(--muted); margin: 8px 2px 0; line-height: 1.45; }
+  .colors { display: grid; grid-template-columns: repeat(8, minmax(0, 40px)); gap: 4px; justify-content: space-between; }
+  .colors button { aspect-ratio: 1; border-radius: 50%; border: 3px solid var(--panel); box-shadow: 0 0 0 2px transparent; }
+  .colors button.sel { box-shadow: 0 0 0 2px var(--text); }
+  .addblock { border: 1px dashed var(--line); background: none; }
+  .total-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 520px; background: var(--bg);
+    border-top: 1px solid var(--line); padding: 10px 20px calc(10px + env(safe-area-inset-bottom)); z-index: 6; }
   .total-bar .row { display: flex; align-items: center; gap: 10px; }
-  .total-bar .t { flex: 1; }
-  .total-bar b { font-size: 20px; font-variant-numeric: tabular-nums; }
-  .timeline { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 1px; margin-bottom: 8px; }
+  .total-bar .t { flex: 1; line-height: 1.1; }
+  .total-bar .t small { color: var(--muted); }
+  .total-bar b { font-family: var(--display); font-size: 30px; font-variant-numeric: tabular-nums; }
+  .timeline { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 1px; margin-bottom: 8px; }
   .timeline div { height: 100%; min-width: 1px; }
 
   /* Settings */
-  .setting { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid var(--line); gap: 12px; }
+  .setting { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 10px 0; border-bottom: 1px solid var(--line); gap: 14px; }
   .setting:last-child { border-bottom: none; }
-  .setting b { display: block; font-weight: 600; font-size: 15px; }
-  .setting small { color: var(--muted); }
-  .setting select { width: auto; padding: 8px 10px; }
-  .switch { position: relative; width: 50px; height: 30px; flex-shrink: 0; }
+  .setting b { display: block; font-weight: 500; font-size: 16px; }
+  .setting small { color: var(--muted); display: block; margin-top: 1px; }
+  .setting select { width: auto; padding: 9px 10px; }
+  .switch { position: relative; width: 52px; height: 32px; flex-shrink: 0; }
   .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
-  .switch span { position: absolute; inset: 0; background: var(--line); border-radius: 30px; transition: .2s; cursor: pointer; }
-  .switch span::before { content: ""; position: absolute; width: 24px; height: 24px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .switch span { position: absolute; inset: 0; background: var(--line); border-radius: 32px; transition: background-color .15s; cursor: pointer; }
+  .switch span::before { content: ""; position: absolute; width: 26px; height: 26px; left: 3px; top: 3px; background: var(--muted); border-radius: 50%; transition: transform .15s; }
   .switch input:checked + span { background: var(--accent); }
-  .switch input:checked + span::before { transform: translateX(20px); }
+  .switch input:checked + span::before { transform: translateX(20px); background: var(--on-accent); }
+  .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
   input[type=range] { padding: 0; accent-color: var(--accent); background: none; border: none; }
 
-  /* History */
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .stat { background: var(--panel); border-radius: 14px; padding: 12px 4px; text-align: center; }
-  .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .stat small { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; }
+  /* Progression */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .stats.tiles3 { grid-template-columns: repeat(3, 1fr); }
-  #pg-body > .stats { grid-template-columns: 1fr 1fr; }
-  #pg-body > .stats .stat b { font-size: 22px; }
-  .chart-sub { white-space: pre-line; }
+  .stat { background: var(--panel); border-radius: 14px; padding: 12px 14px; }
+  .stat b { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 34px; line-height: 1.05; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stat b .ic { width: 22px; height: 22px; color: var(--amrap); }
+  .stat small { color: var(--muted); }
+  .tiles3 .stat { text-align: center; padding: 12px 4px; }
+  .tiles3 .stat b { justify-content: center; font-size: 26px; }
   .sheet .stat, .section .hist { background: var(--panel2); }
   .chart-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-  .hero { font-size: 26px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .chart-sub { color: var(--muted); font-size: 12px; margin-top: 4px; line-height: 1.35; }
-  .chart-cap { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .6px; margin-top: 14px; }
-  .seg.mini { margin: 0; flex-shrink: 0; }
-  .seg.mini button { padding: 6px 10px; font-size: 12px; }
+  .hero { font-family: var(--display); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .chart-sub { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.4; white-space: pre-line; }
+  .chart-cap { color: var(--muted); font-size: 13px; margin-top: 14px; }
   .chart { position: relative; margin-top: 8px; }
   .chart svg { display: block; width: 100%; overflow: visible; }
   .chart text { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
@@ -188,177 +204,230 @@
   .chart .ln { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
   .chart .pt { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
   .chart .hit { cursor: pointer; }
-  .tip { position: absolute; pointer-events: none; background: var(--text); color: var(--bg); font-size: 12px; padding: 6px 9px; border-radius: 8px; white-space: nowrap; z-index: 2; line-height: 1.4; box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+  .tip { position: absolute; pointer-events: none; background: var(--accent); color: var(--on-accent); font-size: 12px; padding: 6px 10px; border-radius: 8px; white-space: nowrap; z-index: 2; line-height: 1.4; }
   .tip b { display: block; }
   .tip b::first-letter, .cal-day .dl::first-letter, .sheet p::first-letter { text-transform: uppercase; }
-  .cal-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .cal-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
   .cal-hd .t { flex: 1; text-align: center; }
-  .cal-hd b { display: block; text-transform: capitalize; }
+  .cal-hd b { display: block; font-family: var(--display); font-size: 24px; line-height: 1.1; text-transform: capitalize; }
   .cal-hd small { color: var(--muted); }
-  .cal-hd button:disabled { opacity: .3; cursor: default; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .cal-grid span { text-align: center; font-size: 11px; color: var(--muted); padding-bottom: 2px; }
-  .cal-grid button { aspect-ratio: 1; border-radius: 10px; background: var(--panel2); font-size: 13px; font-variant-numeric: tabular-nums; }
-  .cal-grid button:disabled { opacity: .3; cursor: default; }
-  .l1 { background: color-mix(in srgb, var(--accent) 25%, var(--panel2)) !important; }
-  .l2 { background: color-mix(in srgb, var(--accent) 48%, var(--panel2)) !important; }
-  .l3 { background: color-mix(in srgb, var(--accent) 74%, var(--panel2)) !important; color: #16181d; font-weight: 700; }
-  .l4 { background: var(--accent) !important; color: #16181d; font-weight: 700; }
-  .cal-grid .today { box-shadow: inset 0 0 0 2px var(--text); }
-  .cal-grid .sel { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .cal-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 11px; color: var(--muted); margin-top: 10px; }
-  .cal-legend i { width: 12px; height: 12px; border-radius: 3px; }
-  .cal-day { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
-  .cal-day .dl { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .cal-grid span { text-align: center; font-size: 12px; color: var(--muted); padding-bottom: 2px; }
+  .cal-grid button { aspect-ratio: 1; border-radius: 50%; background: var(--panel2); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .cal-grid button:disabled { opacity: .3; }
+  .l1 { background: color-mix(in srgb, var(--accent) 22%, var(--panel2)) !important; }
+  .l2 { background: color-mix(in srgb, var(--accent) 45%, var(--panel2)) !important; }
+  .l3 { background: color-mix(in srgb, var(--accent) 72%, var(--panel2)) !important; color: var(--on-accent); font-weight: 700; }
+  .l4 { background: var(--accent) !important; color: var(--on-accent); font-weight: 700; }
+  .cal-grid .today { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--work); }
+  .cal-grid .sel { outline: 2px solid var(--text); outline-offset: 2px; }
+  .cal-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font-size: 12px; color: var(--muted); margin-top: 12px; }
+  .cal-legend i { width: 12px; height: 12px; border-radius: 50%; }
+  .cal-day { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .cal-day .dl { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
   .cal-day .hist:last-child { margin-bottom: 0; }
-  .rec { font-size: 12px; font-weight: 700; white-space: nowrap; }
-  .chev { color: var(--muted); font-size: 20px; }
-  .sheet .rpe { display: flex; gap: 4px; }
-  .sheet .rpe button { flex: 1; height: 40px; border-radius: 10px; background: var(--panel2); font-weight: 700; }
-  .sheet .rpe button.on { background: var(--accent); color: #16181d; }
-  .hist { background: var(--panel); border-radius: 12px; padding: 12px 12px 12px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; border-left: 4px solid var(--c); cursor: pointer; }
+  .rec { font-size: 13px; font-weight: 600; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+  .rec .ic { color: var(--prep); }
+  .chev { color: var(--muted); font-size: 16px; display: grid; place-items: center; }
+  .hist { background: var(--panel); border-radius: 14px; padding: 13px 12px 13px 18px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; cursor: pointer; position: relative; overflow: hidden; }
+  .hist::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--c); }
   .hist .t { flex: 1; min-width: 0; }
-  .hist .d { color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .hist .nt { font-size: 13px; margin-top: 4px; font-style: italic; color: var(--muted); }
-  .badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
-  .badge.ok { background: color-mix(in srgb, var(--rest) 20%, transparent); color: var(--rest); }
-  .badge.part { background: color-mix(in srgb, var(--prep) 20%, transparent); color: var(--prep); }
+  .hist .d { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .hist .nt { font-size: 14px; margin-top: 4px; font-style: italic; color: var(--muted); }
+  .badge { font-size: 12px; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+  .badge.ok { background: color-mix(in srgb, var(--rest) 18%, transparent); color: var(--rest); }
+  .badge.part { background: color-mix(in srgb, var(--prep) 18%, transparent); color: var(--prep); }
 
   /* Sheets */
-  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 40; display: flex; align-items: flex-end; justify-content: center; animation: fade .15s; }
-  .sheet { background: var(--panel); color: var(--text); width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; border-radius: 20px 20px 0 0;
-    padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); animation: up .2s ease-out; }
-  @keyframes up { from { transform: translateY(40px); opacity: .5; } }
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.62); z-index: 40; display: flex; align-items: flex-end; justify-content: center; animation: fade .15s; }
+  .sheet { background: var(--panel); color: var(--text); width: 100%; max-width: 520px; max-height: 90vh; max-height: 90dvh; overflow-y: auto; overscroll-behavior: contain; border-radius: 24px 24px 0 0;
+    padding: 8px 20px calc(20px + env(safe-area-inset-bottom)); animation: up .22s cubic-bezier(.2,.8,.2,1); outline: none; }
+  @keyframes up { from { transform: translateY(60px); opacity: .4; } }
   @keyframes fade { from { opacity: 0; } }
-  .sheet .grab { width: 40px; height: 4px; background: var(--line); border-radius: 2px; margin: 4px auto 12px; }
-  .sheet h4 { margin: 0 0 4px; font-size: 19px; }
-  .sheet p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
-  .sheet .item { display: flex; gap: 12px; align-items: center; width: 100%; padding: 13px 8px; border-radius: 10px; text-align: left; font-size: 16px; }
+  .sheet .grab { width: 40px; height: 4px; background: var(--line); border-radius: 2px; margin: 4px auto 16px; }
+  .sheet h4 { font-family: var(--display); margin: 0 0 4px; font-size: 30px; line-height: 1.1; }
+  .sheet p { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+  .sheet h2 { margin-top: 22px; }
+  .sheet .item { display: flex; gap: 14px; align-items: center; width: 100%; min-height: 54px; padding: 8px 6px; border-radius: 12px; text-align: left; font-size: 16px; }
+  .sheet .item > .ic { font-size: 18px; color: var(--muted); }
   .sheet .item:active { background: var(--panel2); }
-  .sheet .item.red { color: #ef4444; }
+  .sheet .item.red, .sheet .item.red > .ic { color: var(--work); }
+  .item.type { padding: 10px 6px; }
+  .item.type .chk { font-size: 18px; }
   .steps { list-style: none; margin: 0; padding: 0; }
-  .steps li { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+  .steps li { display: flex; align-items: center; gap: 10px; padding: 11px 8px; border-radius: 10px; cursor: pointer; font-size: 15px; }
   .steps li.cur { background: var(--panel2); font-weight: 700; }
   .steps li.past { opacity: .45; }
   .steps li .k { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .steps li .tm { font-variant-numeric: tabular-nums; color: var(--muted); }
-  .steps li.bh { cursor: default; padding: 14px 8px 8px 12px; margin-top: 6px; border-left: 4px solid var(--bc); border-radius: 0 10px 10px 0; background: var(--panel2); align-items: flex-start; }
+  .steps .tm { display: flex; gap: 6px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .steps li.bh { cursor: default; padding: 12px 10px 12px 16px; margin-top: 8px; border-radius: 12px; background: var(--panel2); align-items: flex-start; position: relative; overflow: hidden; }
+  .steps li.bh::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--bc); }
   .steps li.bh > div { flex: 1; min-width: 0; }
-  .steps li.bh b { font-size: 15px; }
+  .steps li.bh b { font-size: 16px; }
   .steps li.bh small { display: block; color: var(--muted); font-weight: 400; margin-top: 2px; }
-  .steps li.bh.cur { background: color-mix(in srgb, var(--bc) 22%, var(--panel2)); }
-  .steps li.bh.cur b { font-weight: 800; }
-  .steps li.grp { display: block; padding: 0 0 0 14px; cursor: default; }
-  .steps li.grp .steps li { padding: 7px 8px; }
+  .steps li.bh.cur { background: color-mix(in srgb, var(--bc) 20%, var(--panel2)); }
+  .steps li.grp { display: block; padding: 0 0 0 12px; cursor: default; }
+  .steps li.grp .steps li { padding: 9px 8px; }
   .steps li.sg { margin-top: 4px; }
-  .steps summary { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; list-style: none; }
+  .steps summary { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 8px; border-radius: 10px; cursor: pointer; font-size: 15px; font-weight: 600; list-style: none; }
   .steps summary::-webkit-details-marker { display: none; }
-  .steps summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
-  .steps details[open] > summary::before { transform: rotate(90deg); }
+  .steps summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .15s; flex-shrink: 0; margin: 0 3px; }
+  .steps details[open] > summary::before { transform: rotate(45deg); }
   .steps summary.cur { background: var(--panel2); }
   .steps summary.past { opacity: .5; }
-  .steps details > .steps { padding-left: 14px; border-left: 1px dashed var(--line); margin-left: 12px; }
-  .steps .rn { display: inline-grid; place-items: center; min-width: 22px; height: 20px; border-radius: 6px; background: var(--panel2); color: var(--muted); font-size: 11px; font-weight: 700; margin-right: 8px; padding: 0 4px; }
-  .steps .tm { display: flex; gap: 6px; }
-  .tw, .tr { font-variant-numeric: tabular-nums; }
+  .steps summary .k { flex: 1; }
+  .steps details > .steps { padding-left: 12px; border-left: 1px dashed var(--line); margin-left: 14px; }
+  .steps .rn { display: inline-grid; place-items: center; min-width: 24px; height: 22px; border-radius: 6px; background: var(--panel2); color: var(--muted); font-size: 12px; font-weight: 700; margin-right: 8px; padding: 0 5px; }
   .steps .tw { color: var(--text); }
   .steps .tr { color: var(--rest); }
   .steps .tr::before { content: "+ "; color: var(--muted); }
-  .steps .xn { color: var(--accent); font-weight: 700; min-width: 30px; text-align: right; }
-  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: -4px 0 8px; }
-  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .steps .xn { color: var(--text); font-weight: 700; min-width: 30px; text-align: right; }
+  .legend { display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin: -4px 0 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
   .legend i.tw { background: var(--work); } .legend i.tr { background: var(--rest); }
-  .legend i.tr::before { content: none; }
-  .pv-blocks { margin: 12px 0; }
-  .pv-blocks div { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .pv-blocks { margin: 14px 0; }
+  .pv-blocks div { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; flex-wrap: wrap; }
   .pv-blocks div:last-child { border: none; }
   .pv-blocks span { color: var(--muted); }
+  .rpe { display: flex; gap: 4px; }
+  .rpe button { flex: 1; height: 44px; border-radius: 10px; background: var(--panel2); font-family: var(--display); font-size: 20px; }
+  .rpe button.on { background: var(--accent); color: var(--on-accent); }
 
-  .toast { position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 8px 10px 18px; border-radius: 30px;
-    font-weight: 600; z-index: 60; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.4); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-  .toast button { color: var(--accent); font-weight: 700; padding: 0 10px; }
-  .toast:not(:has(button)) { padding-right: 18px; }
+  .toast { position: fixed; bottom: calc(var(--tabs-h) + 24px); left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--on-accent); min-height: 46px; padding: 0 8px 0 20px; border-radius: 30px;
+    font-weight: 600; z-index: 60; font-size: 15px; box-shadow: 0 6px 24px rgba(0,0,0,.5); display: flex; align-items: center; gap: 8px; white-space: nowrap; max-width: calc(100vw - 24px); }
+  .toast button { font-weight: 700; padding: 0 14px; min-height: 46px; text-decoration: underline; }
+  .toast:not(:has(button)) { padding-right: 20px; }
 
-  /* ===== Run screen ===== */
-  #run { position: fixed; inset: 0; z-index: 20; background: var(--phase); transition: background-color .35s; color: #fff; user-select: none; -webkit-user-select: none;
+  /* ===== Run screen: the scoreboard ===== */
+  #run { position: fixed; inset: 0; z-index: 20; background: var(--bg); color: var(--text); user-select: none; -webkit-user-select: none; touch-action: manipulation;
     display: flex; justify-content: center; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-  #run .inner { width: 100%; max-width: 520px; display: grid; grid-template-rows: auto auto 1fr auto auto; padding: 12px 18px 18px; }
-  #run .top { display: flex; align-items: center; gap: 8px; }
-  #run .top .title { flex: 1; text-align: center; font-weight: 650; opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #run .top .icon-btn { background: rgba(0,0,0,.2); color: #fff; }
-  #run .counters { display: flex; justify-content: space-around; margin-top: 12px; }
-  #run .counters div { text-align: center; min-width: 70px; }
-  #run .counters small { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
-  #run .counters b { font-size: 26px; font-variant-numeric: tabular-nums; }
-  #run .center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
-  #run .ring { position: relative; width: min(76vw, 46vh, 340px); aspect-ratio: 1; cursor: pointer; }
-  #run .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-  #run .ring circle { fill: none; stroke-width: 9; }
-  #run .ring .bg { stroke: rgba(0,0,0,.18); }
-  #run .ring .fg { stroke: #fff; stroke-linecap: round; transition: stroke-dashoffset .15s linear; }
-  #run .ring .txt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 12%; }
-  #run .blk { font-size: 12px; font-weight: 700; opacity: .8; text-transform: uppercase; letter-spacing: 1.5px; }
-  #run .phase-label { font-size: clamp(16px, 5vw, 22px); font-weight: 800; text-transform: uppercase; letter-spacing: 3px; }
-  #run .big { font-size: min(22vw, 13vh, 100px); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.05; letter-spacing: -2px; }
-  #run .exercise { font-size: clamp(16px, 5vw, 22px); font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  #run .exnote { font-size: 13px; opacity: .85; margin-top: 2px; }
-  #run .paused-tag { margin-top: 6px; font-size: 12px; font-weight: 800; letter-spacing: 2px; background: rgba(0,0,0,.28); padding: 4px 10px; border-radius: 20px; }
-  #run .lapbox { margin-top: 14px; display: flex; gap: 10px; align-items: center; }
-  #run .lapbtn { background: #fff; color: #111; border-radius: 30px; padding: 12px 22px; font-weight: 800; font-size: 17px; }
-  #run .lapbtn:active { transform: scale(.95); }
-  #run #run-setdone { margin-top: 16px; padding: 16px 28px; font-size: 19px; }
-  #run.locked #run-setdone { opacity: .3; pointer-events: none; }
-  #run .lapundo { background: rgba(0,0,0,.2); width: 40px; height: 40px; border-radius: 50%; color: #fff; }
-  #run .next { margin-top: 14px; background: rgba(0,0,0,.18); padding: 9px 16px; border-radius: 14px; font-size: 15px; text-align: center; max-width: 100%; }
-  #run .next small { opacity: .8; }
-  #run .chips { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
-  #run .chips button { background: rgba(0,0,0,.2); color: #fff; padding: 7px 13px; border-radius: 20px; font-size: 14px; font-weight: 650; }
-  #run .progress { height: 6px; background: rgba(0,0,0,.18); border-radius: 3px; overflow: hidden; margin: 10px 0 5px; }
-  #run .progress div { height: 100%; background: #fff; width: 0; transition: width .2s linear; }
-  #run .times { display: flex; justify-content: space-between; font-size: 13px; opacity: .9; font-variant-numeric: tabular-nums; }
-  #run .controls { display: flex; justify-content: center; align-items: center; gap: 28px; margin-top: 12px; }
-  #run .controls button { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,0,0,.2); color: #fff; font-size: 22px; display: grid; place-items: center; }
-  #run .controls button.main { width: 84px; height: 84px; background: #fff; color: #111; font-size: 30px; }
+  #run::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: calc(8px + env(safe-area-inset-top)); background: var(--phase); z-index: 1; }
+  #run .wash { position: absolute; inset: 0; background: var(--phase); opacity: 0; pointer-events: none; }
+  #run.flash .wash { animation: wash .7s ease-out; }
+  @keyframes wash { 0% { opacity: .9; } 100% { opacity: 0; } }
+  #run .inner { position: relative; width: 100%; max-width: 520px; display: flex; flex-direction: column; padding: 22px 20px 12px; min-height: 0; }
+  #run .status .title { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #run .counters { display: flex; gap: 22px; margin-top: 6px; }
+  #run .counters div:last-child { margin-left: auto; text-align: right; }
+  #run .counters small { display: block; color: var(--muted); font-size: 13px; }
+  #run .counters b { font-family: var(--display); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+  #run .stage { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; cursor: pointer; touch-action: pan-y; }
+  #run .blk { color: var(--muted); font-size: 14px; min-height: 19px; }
+  #run .phase-label { font-family: var(--display); font-size: 34px; line-height: 1.05; color: var(--phase); }
+  #run .big { font-family: var(--display); font-variant-numeric: tabular-nums; line-height: .86; letter-spacing: -.01em; color: var(--phase); white-space: nowrap;
+    --w: 54vw; --cap: 290px; font-size: min(var(--w), 30vh, var(--cap)); margin: 4px 0 10px -.03em; }
+  #run .big[data-len="5"] { --w: 43vw; --cap: 232px; }
+  #run .big[data-len="7"], #run .big[data-len="8"] { --w: 32vw; --cap: 170px; }
+  #run .phasebar { height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; }
+  #run .phasebar div { height: 100%; background: var(--phase); transform-origin: left; border-radius: 4px; }
+  #run .exercise { font-size: 26px; font-weight: 600; line-height: 1.15; margin-top: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  #run .exnote { color: var(--muted); font-size: 16px; margin-top: 2px; min-height: 22px; }
+  #run .paused-tag { color: var(--muted); font-size: 15px; margin-top: 8px; }
+  #run.paused .big, #run.paused .phase-label { color: var(--muted); }
+  #run.paused .phasebar div, #run.paused::before { background: var(--muted); }
+  #run.lastsec .big { animation: blink 1s steps(2, jump-none) infinite; }
+  @keyframes blink { 0% { opacity: 1; } 100% { opacity: .35; } }
+  #run .next { color: var(--muted); font-size: 16px; min-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #run .next b { color: var(--text); font-weight: 600; }
+  #run .actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; min-height: 52px; }
+  #run .lapbox { display: flex; gap: 10px; align-items: center; flex: 1; }
+  #run .lapbtn { flex: 1; min-height: 52px; border-radius: 14px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  #run .lapbtn:active { transform: scale(.97); }
+  #run .lapundo { width: 52px; height: 52px; border-radius: 14px; background: var(--panel2); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+  #run .chips { display: flex; gap: 10px; flex: 1; }
+  #run .chips button { flex: 1; min-height: 46px; border-radius: 12px; background: var(--panel); color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+  #run .progress { height: 4px; background: var(--panel2); border-radius: 2px; overflow: hidden; margin: 14px 0 6px; }
+  #run .progress div { height: 100%; background: var(--text); width: 0; }
+  #run .times { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  #run .controls { display: flex; justify-content: center; align-items: center; gap: 30px; margin-top: 10px; }
+  #run .controls button { width: 64px; height: 64px; border-radius: 50%; background: var(--panel); color: var(--text); font-size: 22px; display: grid; place-items: center; }
+  #run .controls button.main { width: 88px; height: 88px; background: none; border: 3px solid var(--text); font-size: 32px; }
   #run .controls button:active { transform: scale(.93); }
-  #run.flash { animation: flash .45s; }
-  @keyframes flash { 0% { filter: brightness(1.5); } 100% { filter: none; } }
-  #run.lastsec .big { animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
-  #run.locked .controls, #run.locked .chips, #run.locked .lapbox, #run.locked .top #run-stop, #run.locked .top #run-plan { opacity: .3; pointer-events: none; }
-  #run.locked #run-lock { background: #fff; color: #111; }
-  #run.xxl .big { font-size: min(32vw, 20vh, 150px); }
-  #run.xxl .ring svg { opacity: .5; }
-  #run .lockhint { position: absolute; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.6); padding: 6px 12px; border-radius: 20px; font-size: 13px; }
-  @media (orientation: landscape) and (max-height: 560px) {
-    #run .inner { max-width: 900px; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto; column-gap: 24px; }
-    #run .top { grid-column: 1 / 3; }
-    #run .center { grid-row: 2 / 5; grid-column: 1; }
-    #run .counters { grid-column: 2; grid-row: 2; align-self: center; }
-    #run .ring { width: min(60vh, 45vw); }
-    #run .meta { grid-column: 2; grid-row: 3; }
-    #run .controls { grid-column: 2; grid-row: 4; }
+  #run .tools { display: flex; justify-content: space-between; margin-top: 10px; }
+  #run .tools button { flex: 1; min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); font-size: 12px; border-radius: 12px; }
+  #run .tools .ic { width: 22px; height: 22px; }
+  #run .tools button:active { background: var(--panel); }
+  #run.locked .controls, #run.locked .actions, #run.locked .tools button:not(#run-lock) { opacity: .25; pointer-events: none; }
+  #run.locked #run-lock { color: var(--text); }
+  #run .lockhint { position: absolute; z-index: 3; bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); background: var(--accent); color: var(--on-accent); padding: 10px 16px; border-radius: 24px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  @media (orientation: landscape) and (max-height: 520px) {
+    #run .inner { max-width: none; display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto 1fr; column-gap: 28px; padding: 18px 24px 8px; }
+    #run .status { grid-column: 2; }
+    #run .stage { grid-column: 1; grid-row: 1 / 3; }
+    #run .dock { grid-column: 2; align-self: end; }
+    #run .big { --w: 27vw; --cap: 62vh; font-size: min(var(--w), var(--cap)); }
+    #run .big[data-len="5"] { --w: 22vw; } #run .big[data-len="7"], #run .big[data-len="8"] { --w: 16vw; }
+    #run .controls button { width: 52px; height: 52px; } #run .controls button.main { width: 64px; height: 64px; }
+    #run .tools button { flex-direction: row; gap: 6px; min-height: 40px; } #run .progress { margin-top: 8px; } #run .actions { margin-top: 6px; min-height: 46px; }
+    #run .exercise { font-size: 20px; margin-top: 8px; }
+  }
+  @media (max-height: 640px) and (orientation: portrait) {
+    #run .inner { padding-top: 18px; } #run .counters b { font-size: 26px; }
+    #run .big { font-size: min(var(--w), 21vh, var(--cap)); margin-bottom: 8px; } #run .phase-label { font-size: 28px; }
+    #run .blk, #run .exnote { min-height: 0; } #run .exercise { font-size: 20px; margin-top: 8px; -webkit-line-clamp: 1; }
+    #run .controls button.main { width: 68px; height: 68px; } #run .controls button { width: 54px; height: 54px; } #run .controls { margin-top: 6px; }
+    #run .actions { margin-top: 8px; min-height: 44px; } #run .chips button, #run .lapbtn { min-height: 44px; } #run .lapundo { width: 44px; height: 44px; }
+    #run .progress { margin-top: 10px; } #run .tools { margin-top: 4px; } #run .tools button span { display: none; } #run .tools button { min-height: 40px; }
   }
 
-  #done { position: absolute; inset: 0; background: var(--cool-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; overflow-y: auto; }
-  #done .trophy { font-size: 64px; }
-  #done h2 { color: #fff; font-size: 30px; text-transform: none; letter-spacing: 0; margin: 6px 0; justify-content: center; }
-  #done p { opacity: .92; margin: 2px 0; }
-  #done .rpe { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
-  #done .rpe button { width: 34px; height: 34px; border-radius: 10px; background: rgba(0,0,0,.2); color: #fff; font-weight: 700; }
-  #done .rpe button.on { background: #fff; color: #111; }
-  #done textarea { background: rgba(0,0,0,.2); border: none; color: #fff; max-width: 360px; resize: none; }
-  #done textarea::placeholder { color: rgba(255,255,255,.7); }
-  #done .lbl { font-size: 13px; opacity: .85; margin-top: 16px; }
+  #done { position: absolute; inset: 0; z-index: 4; background: var(--bg); display: flex; flex-direction: column; justify-content: center; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); overflow-y: auto; }
+  #done > * { width: 100%; max-width: 472px; margin-left: auto; margin-right: auto; }
+  #done .kicker { color: var(--rest); font-family: var(--display); font-size: 34px; line-height: 1.05; display: flex; align-items: center; gap: 10px; }
+  #done .dtime { font-family: var(--display); font-size: min(41vw, 220px); line-height: .9; font-variant-numeric: tabular-nums; margin: 4px 0 10px -.03em; }
+  #done .dtime[data-len="4"] { font-size: min(52vw, 280px); }
+  #done .dtime[data-len="7"], #done .dtime[data-len="8"] { font-size: min(30vw, 160px); }
+  #done p { color: var(--muted); margin: 0 0 4px; font-size: 16px; }
+  #done p b { color: var(--text); }
+  #done .lbl { font-size: 14px; color: var(--muted); margin-top: 22px; margin-bottom: 8px; }
+  #done textarea { margin-top: 10px; resize: none; }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 6v12M15.5 6v12" stroke-width="3.2"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M19 6v12l-9-6z" fill="currentColor"/><path d="M6 6v12"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 6v12l9-6z" fill="currentColor"/><path d="M18 6v12"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 7.6-1.7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4h5v3M6 7l1 13h10l1-13M10 11v5.5M14 11v5.5"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M6.5 4h11v16.5l-5.5-4-5.5 4z"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M20 11.5a8 8 0 1 0-2.4 6.2"/><path d="M20 4.5v7h-7"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9.5h10a5 5 0 0 1 0 10H9"/><path d="M8 5.5l-4 4 4 4"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.8z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M12 5.5h.01M12 12h.01M12 18.5h.01" stroke-width="3"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-chevdown" viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 2.5h5"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.5"/><circle cx="8" cy="17" r="2.5"/></symbol>
+  <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M7 12h10M7 7v10M17 7v10M3.5 9.5v5M20.5 9.5v5"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 3l4 4-4 4"/><path d="M3 11V9a2 2 0 0 1 2-2h16M7 21l-4-4 4-4"/><path d="M21 13v2a2 2 0 0 1-2 2H3"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4h12l-2.5 4.5L17 13H5"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v6a4 4 0 0 1-8 0zM8 6H4.5v1.5A3.5 3.5 0 0 0 8 11M16 6h3.5v1.5A3.5 3.5 0 0 1 16 11M12 14v4M8.5 20h7"/></symbol>
+  <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c.6 3.6 5 5.6 5 10.4a5 5 0 0 1-10 0c0-1.9.9-3.4 2-4.4.2 1.5.9 2.4 1.9 2.9.6-3-.4-5.9 1.1-8.9z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 20h14"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 20h14"/></symbol>
+</defs></svg>
 <div id="app">
   <!-- ========== HOME ========== -->
   <section id="view-home">
-    <header>
-      <h1>Sport<span>Clock</span></h1>
-      <button class="icon-btn accent" id="btn-new" title="Nouvelle séance">＋</button>
-    </header>
+    <header><h1>SportClock</h1></header>
     <main>
       <div id="resume"></div>
 
@@ -371,16 +440,16 @@
         </div>
         <p class="summary" id="quick-summary"></p>
         <div class="btn-row">
-          <button class="btn" id="quick-save">💾 Enregistrer</button>
-          <button class="btn primary" id="quick-start">▶ Démarrer</button>
+          <button class="btn" id="quick-save"><svg class="ic"><use href="#i-save"/></svg>Enregistrer</button>
+          <button class="btn primary" id="quick-start"><svg class="ic"><use href="#i-play"/></svg>Démarrer</button>
         </div>
       </div>
 
       <h2>Modèles</h2>
       <div class="templates" id="templates"></div>
 
-      <h2><span>Mes séances</span><span id="count"></span></h2>
-      <input class="search hidden" id="search" placeholder="🔍 Rechercher une séance…">
+      <h2 style="align-items:center"><span>Mes séances <span class="sub" id="count"></span></span><button class="btn small" id="btn-new"><svg class="ic"><use href="#i-plus"/></svg>Nouvelle</button></h2>
+      <input class="search hidden" id="search" type="search" placeholder="Rechercher une séance" aria-label="Rechercher une séance">
       <div id="profile-list"></div>
     </main>
   </section>
@@ -388,27 +457,27 @@
   <!-- ========== EDITOR ========== -->
   <section id="view-edit" class="hidden">
     <header>
-      <button class="icon-btn" id="edit-back" title="Retour">←</button>
-      <h1 id="edit-title">Nouvelle séance</h1>
-      <button class="icon-btn accent" id="edit-save" title="Enregistrer">✓</button>
+      <button class="icon-btn" id="edit-back" title="Retour"><svg class="ic"><use href="#i-back"/></svg></button>
+      <h1 id="edit-title" style="font-size:28px">Création</h1>
+      <button class="btn small primary" id="edit-save"><svg class="ic"><use href="#i-check"/></svg>Enregistrer</button>
     </header>
-    <main style="padding-bottom:150px">
+    <main style="padding-bottom:170px">
       <div class="section">
-        <div class="fld"><label for="f-name">Nom de la séance</label><input id="f-name" placeholder="Ex. HIIT du mardi" maxlength="40"></div>
-        <div class="fld" style="margin-top:12px"><label>Couleur</label><div class="colors" id="f-colors"></div></div>
+        <div class="fld"><label for="f-name">Nom de la séance</label><input id="f-name" placeholder="HIIT du mardi" maxlength="40" enterkeyhint="done"></div>
+        <div class="fld" style="margin-top:14px"><label>Couleur</label><div class="colors" id="f-colors"></div></div>
       </div>
 
-      <h2>Contenu <span style="text-transform:none;letter-spacing:0;font-weight:400">blocs enchaînés dans l'ordre</span></h2>
+      <h2>Contenu <span class="sub">blocs enchaînés dans l'ordre</span></h2>
       <div id="blocks"></div>
-      <button class="btn block addblock" id="addblock">＋ Ajouter un bloc</button>
-      <p class="hint" style="text-align:center;margin-top:10px">Combinez plusieurs blocs : échauffement → musculation → Tabata → étirements…</p>
+      <button class="btn block addblock" id="addblock"><svg class="ic"><use href="#i-plus"/></svg>Ajouter un bloc</button>
+      <p class="hint" style="text-align:center;margin-top:10px">Combinez plusieurs blocs : échauffement, musculation, Tabata, étirements…</p>
 
       <h2>Avant, après, répétition</h2>
       <div class="section">
         <div class="grid2">
           <div class="fld"><label><span class="dot" style="background:var(--prep)"></span> Préparation</label><div id="f-prep"></div></div>
           <div class="fld"><label><span class="dot" style="background:var(--cool)"></span> Retour au calme</label><div id="f-cool"></div></div>
-          <div class="fld"><label>🔁 Répéter toute la séance</label><div id="f-repeat"></div></div>
+          <div class="fld"><label>Répéter toute la séance</label><div id="f-repeat"></div></div>
           <div id="f-represt-wrap" class="fld"><label><span class="dot" style="background:var(--blockrest)"></span> Repos entre passages</label><div id="f-represt"></div></div>
         </div>
       </div>
@@ -417,16 +486,16 @@
     <div class="total-bar">
       <div class="timeline" id="f-timeline"></div>
       <div class="row">
-        <div class="t"><small style="color:var(--muted)">Durée totale</small><br><b id="f-total">0:00</b></div>
-        <button class="btn small" id="edit-preview">☰ Plan</button>
-        <button class="btn small primary" id="edit-start">▶ Tester</button>
+        <div class="t"><small>Durée totale</small><br><b id="f-total">0:00</b></div>
+        <button class="btn small" id="edit-preview"><svg class="ic"><use href="#i-list"/></svg>Plan</button>
+        <button class="btn small" id="edit-start"><svg class="ic"><use href="#i-play"/></svg>Tester</button>
       </div>
     </div>
   </section>
 
   <!-- ========== HISTORY ========== -->
   <section id="view-history" class="hidden">
-    <header><h1>Progression</h1><button class="icon-btn" id="hist-clear" title="Effacer">🗑</button></header>
+    <header><h1>Progression</h1><button class="icon-btn" id="hist-clear" title="Effacer l'historique"><svg class="ic"><use href="#i-trash"/></svg></button></header>
     <main>
       <div class="empty" id="pg-empty">Aucune séance pour l'instant.<br>Lancez un minuteur : vos statistiques, votre calendrier et vos courbes apparaîtront ici.</div>
       <div id="pg-body">
@@ -437,7 +506,7 @@
           <div class="stat"><b id="st-sessions">0</b><small>Séances</small></div>
           <div class="stat"><b id="st-time">0</b><small>Temps total</small></div>
           <div class="stat"><b id="st-avg">0</b><small>Par séance</small></div>
-          <div class="stat" title="Semaines d'affilée avec au moins une séance"><b>🔥 <span id="st-streak">0</span></b><small>Sem. d'affilée · <span id="st-streak-rec"></span></small></div>
+          <div class="stat" title="Semaines d'affilée avec au moins une séance"><b><svg class="ic"><use href="#i-flame"/></svg><span id="st-streak">0</span></b><small>Semaines d'affilée, <span id="st-streak-rec"></span></small></div>
         </div>
 
         <div class="section chart-card" style="margin-top:10px">
@@ -452,16 +521,16 @@
         <h2>Calendrier</h2>
         <div class="section">
           <div class="cal-hd">
-            <button class="icon-btn" id="cal-prev" aria-label="Mois précédent" style="background:var(--panel2)">‹</button>
+            <button class="icon-btn" id="cal-prev" aria-label="Mois précédent"><svg class="ic"><use href="#i-left"/></svg></button>
             <div class="t"><b id="cal-title"></b><small id="cal-sub"></small></div>
-            <button class="icon-btn" id="cal-next" aria-label="Mois suivant" style="background:var(--panel2)">›</button>
+            <button class="icon-btn" id="cal-next" aria-label="Mois suivant"><svg class="ic"><use href="#i-right"/></svg></button>
           </div>
           <div class="cal-grid" id="cal-grid"></div>
           <div class="cal-legend">moins <i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> plus de temps</div>
           <div class="cal-day" id="cal-day"></div>
         </div>
 
-        <h2>Par séance <span style="text-transform:none;letter-spacing:0;font-weight:400">touchez pour la courbe</span></h2>
+        <h2>Par séance <span class="sub">touchez pour la courbe</span></h2>
         <div id="pg-workouts"></div>
 
         <h2>Journal</h2>
@@ -474,112 +543,115 @@
   <section id="view-settings" class="hidden">
     <header><h1>Réglages</h1></header>
     <main>
-      <h2>Sons & voix</h2>
-      <div class="section" style="padding:0 14px">
+      <h2>Sons et voix</h2>
+      <div class="section" style="padding:2px 16px">
         <label class="setting"><span><b>Bips de changement de phase</b><small>Son distinct pour effort et repos</small></span><span class="switch"><input type="checkbox" data-s="beeps"><span></span></span></label>
         <div class="setting"><span><b>Compte à rebours sonore</b><small>Bips courts avant chaque fin de phase</small></span>
-          <select data-s="cdLen"><option value="0">Aucun</option><option value="3">3 s</option><option value="5">5 s</option><option value="10">10 s</option></select></div>
+          <select data-s="cdLen" aria-label="Compte à rebours sonore"><option value="0">Aucun</option><option value="3">3 s</option><option value="5">5 s</option><option value="10">10 s</option></select></div>
         <label class="setting"><span><b>Annonces vocales</b><small>Nom de l'exercice, « Repos », « Terminé »…</small></span><span class="switch"><input type="checkbox" data-s="voice"><span></span></span></label>
         <label class="setting"><span><b>Annoncer l'exercice suivant</b><small>Quelques secondes avant la fin du repos</small></span><span class="switch"><input type="checkbox" data-s="preannounce"><span></span></span></label>
         <label class="setting"><span><b>Rappel « 10 secondes »</b><small>Pendant les phases d'effort longues</small></span><span class="switch"><input type="checkbox" data-s="tenSec"><span></span></span></label>
         <label class="setting"><span><b>Bip à mi-parcours</b><small>Pendant les phases d'effort</small></span><span class="switch"><input type="checkbox" data-s="halfway"><span></span></span></label>
         <label class="setting"><span><b>Vibrations</b><small>Sur téléphone compatible</small></span><span class="switch"><input type="checkbox" data-s="vibrate"><span></span></span></label>
-        <div class="setting"><span><b>Volume</b></span><input type="range" min="0" max="1" step="0.05" data-s="volume" style="width:50%"></div>
+        <div class="setting"><span><b>Volume</b></span><input type="range" min="0" max="1" step="0.05" data-s="volume" aria-label="Volume" style="width:50%"></div>
         <div class="setting"><span><b>Type de son</b></span>
-          <select data-s="sound"><option value="beep">Bip</option><option value="whistle">Sifflet</option><option value="bell">Cloche</option><option value="boxing">Gong</option></select></div>
+          <select data-s="sound" aria-label="Type de son"><option value="beep">Bip</option><option value="whistle">Sifflet</option><option value="bell">Cloche</option><option value="boxing">Gong</option></select></div>
         <div class="setting"><span><b>Vitesse de la voix</b></span>
-          <select data-s="rate"><option value="0.9">Lente</option><option value="1.05">Normale</option><option value="1.25">Rapide</option></select></div>
-        <div class="setting"><span><b>Essayer</b></span><button class="btn small" id="test-sound">🔊 Écouter</button></div>
+          <select data-s="rate" aria-label="Vitesse de la voix"><option value="0.9">Lente</option><option value="1.05">Normale</option><option value="1.25">Rapide</option></select></div>
+        <div class="setting"><span><b>Essayer</b></span><button class="btn small" id="test-sound"><svg class="ic"><use href="#i-sound"/></svg>Écouter</button></div>
       </div>
 
       <h2>Pendant la séance</h2>
-      <div class="section" style="padding:0 14px">
+      <div class="section" style="padding:2px 16px">
         <label class="setting"><span><b>Garder l'écran allumé</b></span><span class="switch"><input type="checkbox" data-s="wakelock"><span></span></span></label>
+        <label class="setting"><span><b>Toucher les chiffres pour mettre en pause</b></span><span class="switch"><input type="checkbox" data-s="tapPause"><span></span></span></label>
+        <label class="setting"><span><b>Glisser pour changer de phase</b><small>Vers la gauche : phase suivante. Vers la droite : précédente.</small></span><span class="switch"><input type="checkbox" data-s="swipe"><span></span></span></label>
         <label class="setting"><span><b>Mode arrière-plan</b><small>Garde le minuteur actif écran verrouillé, avec les commandes sur l'écran de verrouillage. Peut interrompre votre musique selon le téléphone.</small></span><span class="switch"><input type="checkbox" data-s="background"><span></span></span></label>
-        <label class="setting"><span><b>Toucher le cercle = pause</b></span><span class="switch"><input type="checkbox" data-s="tapPause"><span></span></span></label>
-        <label class="setting"><span><b>Chiffres XXL</b><small>Lisible de loin (téléphone posé au sol)</small></span><span class="switch"><input type="checkbox" data-s="xxl"><span></span></span></label>
         <div class="setting"><span><b>Temps affiché</b></span>
-          <select data-s="display"><option value="remaining">Restant</option><option value="elapsed">Écoulé</option></select></div>
+          <select data-s="display" aria-label="Temps affiché"><option value="remaining">Restant</option><option value="elapsed">Écoulé</option></select></div>
       </div>
 
       <h2>Apparence</h2>
-      <div class="section" style="padding:0 14px">
-        <div class="setting"><span><b>Thème</b></span>
-          <select data-s="theme"><option value="auto">Automatique</option><option value="dark">Sombre</option><option value="light">Clair</option></select></div>
+      <div class="section" style="padding:2px 16px">
+        <div class="setting"><span><b>Thème</b><small>Le thème clair se lit mieux en plein soleil</small></span>
+          <select data-s="theme" aria-label="Thème"><option value="dark">Noir</option><option value="light">Clair</option></select></div>
       </div>
 
       <h2>Données</h2>
       <div class="btn-row">
-        <button class="btn" id="export">⬇ Sauvegarder</button>
-        <button class="btn" id="import">⬆ Restaurer</button>
+        <button class="btn" id="export"><svg class="ic"><use href="#i-download"/></svg>Sauvegarder</button>
+        <button class="btn" id="import"><svg class="ic"><use href="#i-upload"/></svg>Restaurer</button>
       </div>
       <input type="file" id="import-file" accept="application/json,.json" class="hidden">
-      <p class="hint" style="text-align:center;margin-top:20px">Clavier en séance : <b>Espace</b> pause · <b>→ / ←</b> phase suivante / précédente · <b>T</b> +1 tour · <b>+ / −</b> ±10 s · <b>Échap</b> arrêter</p>
+      <p class="hint" style="text-align:center;margin-top:20px">Au clavier pendant une séance : Espace pour la pause, flèches pour changer de phase, T pour +1 tour, + et − pour 10 s, Échap pour arrêter.</p>
     </main>
   </section>
 
   <nav class="tabs" id="tabs">
-    <button data-v="home" class="active"><span class="ic">⏱</span>Séances</button>
-    <button data-v="history"><span class="ic">📈</span>Progression</button>
-    <button data-v="settings"><span class="ic">⚙</span>Réglages</button>
+    <button data-v="home" class="active"><svg class="ic"><use href="#i-timer"/></svg>Séances</button>
+    <button data-v="history"><svg class="ic"><use href="#i-chart"/></svg>Progression</button>
+    <button data-v="settings"><svg class="ic"><use href="#i-settings"/></svg>Réglages</button>
   </nav>
 </div>
 
-<!-- ========== RUN ========== -->
+<!-- ========== RUN: the scoreboard ========== -->
 <div id="run" class="hidden">
+  <div class="wash"></div>
   <div class="inner">
-    <div class="top">
-      <button class="icon-btn" id="run-stop" title="Arrêter">✕</button>
-      <button class="icon-btn" id="run-plan" title="Plan de la séance">☰</button>
+    <div class="status">
       <div class="title" id="run-title"></div>
-      <button class="icon-btn" id="run-mute" title="Son">🔊</button>
-      <button class="icon-btn" id="run-lock" title="Verrouiller">🔓</button>
+      <div class="counters" id="run-counters"></div>
     </div>
-    <div class="counters" id="run-counters"></div>
-    <div class="center">
-      <div class="ring" id="run-ring">
-        <svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="54"/><circle class="fg" id="run-arc" cx="60" cy="60" r="54"/></svg>
-        <div class="txt">
-          <div class="blk" id="run-blk"></div>
-          <div class="phase-label" id="run-phase"></div>
-          <div class="big" id="run-time">0:00</div>
-          <div class="exercise" id="run-ex"></div>
-          <div class="exnote" id="run-note"></div>
-          <div class="paused-tag hidden" id="run-paused">EN PAUSE</div>
+    <div class="stage" id="run-ring">
+      <div class="blk" id="run-blk"></div>
+      <div class="phase-label" id="run-phase"></div>
+      <div class="big" id="run-time" data-len="4">0:00</div>
+      <div class="phasebar"><div id="run-arc"></div></div>
+      <div class="exercise" id="run-ex"></div>
+      <div class="exnote" id="run-note"></div>
+      <div class="paused-tag hidden" id="run-paused">En pause, touchez pour reprendre</div>
+    </div>
+    <div class="dock">
+      <div class="next" id="run-next"></div>
+      <div class="actions">
+        <div class="lapbox hidden" id="run-lapbox">
+          <button class="lapundo" id="run-lapundo" title="Annuler un tour"><svg class="ic"><use href="#i-undo"/></svg></button>
+          <button class="lapbtn" id="run-lap"><svg class="ic"><use href="#i-plus"/></svg>1 tour <span id="run-laps" class="hidden">0</span></button>
+        </div>
+        <button class="lapbtn hidden" id="run-setdone"><svg class="ic"><use href="#i-check"/></svg>Série terminée</button>
+        <div class="chips" id="run-chips">
+          <button id="run-minus">− 10 s</button>
+          <button id="run-plus">+ 10 s</button>
         </div>
       </div>
-      <div class="lapbox hidden" id="run-lapbox">
-        <button class="lapundo" id="run-lapundo" title="Annuler un tour">↶</button>
-        <button class="lapbtn" id="run-lap">＋1 tour · <span id="run-laps">0</span></button>
+      <div class="meta">
+        <div class="progress"><div id="run-prog"></div></div>
+        <div class="times"><span id="run-elapsed">0:00</span><span id="run-len">0:00</span></div>
       </div>
-      <div class="next" id="run-next"></div>
-      <button class="lapbtn hidden" id="run-setdone">✓ Série terminée</button>
-      <div class="chips" id="run-chips">
-        <button id="run-minus">−10 s</button>
-        <button id="run-plus">+10 s</button>
+      <div class="controls">
+        <button id="run-prev" title="Phase précédente"><svg class="ic"><use href="#i-prev"/></svg></button>
+        <button id="run-toggle" class="main" title="Pause"></button>
+        <button id="run-next-btn" title="Phase suivante"></button>
       </div>
-    </div>
-    <div class="meta">
-      <div class="progress"><div id="run-prog"></div></div>
-      <div class="times"><span id="run-elapsed">0:00</span><span id="run-len">0:00</span></div>
-    </div>
-    <div class="controls">
-      <button id="run-prev" title="Précédent">⏮</button>
-      <button id="run-toggle" class="main" title="Pause">⏸</button>
-      <button id="run-next-btn" title="Suivant">⏭</button>
+      <div class="tools">
+        <button id="run-stop" title="Arrêter la séance"><svg class="ic"><use href="#i-x"/></svg><span>Arrêter</span></button>
+        <button id="run-plan" title="Plan de la séance"><svg class="ic"><use href="#i-list"/></svg><span>Plan</span></button>
+        <button id="run-mute" title="Couper ou remettre le son"><svg class="ic"><use href="#i-sound"/></svg><span>Son</span></button>
+        <button id="run-lock" title="Verrouiller l'écran"><svg class="ic"><use href="#i-unlock"/></svg><span>Verrou</span></button>
+      </div>
     </div>
   </div>
-  <div class="lockhint hidden" id="run-lockhint">Appui long sur 🔒 pour déverrouiller</div>
+  <div class="lockhint hidden" id="run-lockhint">Appui long sur Verrou pour déverrouiller</div>
   <div id="done" class="hidden">
-    <div class="trophy">🏆</div>
-    <h2>Bravo !</h2>
+    <div class="kicker"><svg class="ic"><use href="#i-trophy"/></svg>Séance terminée</div>
+    <div class="dtime" id="done-time">0:00</div>
     <p id="done-sum"></p>
-    <div class="lbl">Ressenti de l'effort (1 = très facile · 10 = maximal)</div>
+    <div class="lbl">Ressenti de l'effort, de 1 (très facile) à 10 (maximal)</div>
     <div class="rpe" id="done-rpe"></div>
-    <textarea id="done-note" rows="2" placeholder="Une note ? (charge, sensations…)"></textarea>
-    <div class="btn-row" style="width:100%;max-width:360px;margin-top:20px">
-      <button class="btn" id="done-again" style="background:rgba(0,0,0,.2);color:#fff">↻ Refaire</button>
-      <button class="btn" id="done-close" style="background:#fff;color:#111">Terminer</button>
+    <textarea id="done-note" rows="2" placeholder="Une note ? Charge, sensations…" aria-label="Note sur la séance"></textarea>
+    <div class="btn-row" style="margin-top:22px">
+      <button class="btn" id="done-again"><svg class="ic"><use href="#i-redo"/></svg>Refaire</button>
+      <button class="btn primary" id="done-close">Terminer</button>
     </div>
   </div>
 </div>
@@ -600,6 +672,9 @@ const parseTime = v => { v = String(v).trim().replace(',', '.'); if (!v) return 
   if (v.includes(':')) { const p = v.split(':').map(Number); return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + (p[1] || 0); }
   return Math.round(parseFloat(v)); };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ic = (n, c = '') => `<svg class="ic ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const setIc = (el, n) => { if (el.dataset.ic === n) return; el.dataset.ic = n; const u = el.querySelector('.ic use');
+  if (u) u.setAttribute('href', '#i-' + n); else el.insertAdjacentHTML('afterbegin', ic(n)); };
 const getP = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
 const setP = (o, p, v) => { const ks = p.split('.'), l = ks.pop(); ks.reduce((a, k) => a[k], o)[l] = v; };
 const timeStep = (v, d) => d > 0 ? (v < 60 ? 5 : v < 300 ? 15 : 60) : (v <= 60 ? 5 : v <= 300 ? 15 : 60);
@@ -615,13 +690,12 @@ const PHASE = {
   fortime:   { label: 'Contre la montre', color: 'var(--fortime)', say: 'Chrono lancé, go' },
   cool:      { label: 'Retour au calme', color: 'var(--cool)', say: 'Retour au calme' },
 };
-Object.keys(PHASE).forEach(k => PHASE[k].bg = `var(--${k}-bg)`); // darker variants: readable white text on the run screen
 const TYPES = {
-  interval: { label: 'Intervalles', icon: '⏱', color: '#ef4444', desc: 'Effort et repos chronométrés : HIIT, Tabata, fractionné, circuit' },
-  reps:     { label: 'Séries', icon: '🏋️', color: '#8b5cf6', desc: 'Musculation : la série à votre rythme, puis le repos chronométré' },
-  emom:     { label: 'Chaque minute', icon: '⏰', color: '#3d7fe0', desc: 'Un exercice au début de chaque minute (EMOM)' },
-  amrap:    { label: 'Max de tours', icon: '🔄', color: '#f97316', desc: 'Le plus de tours possible dans un temps donné (AMRAP)' },
-  fortime:  { label: 'Contre la montre', icon: '🏁', color: '#db2777', desc: 'Finir le plus vite possible, le chrono monte (For Time)' },
+  interval: { label: 'Intervalles', icon: 'timer', color: '#ef4444', desc: 'Effort et repos chronométrés : HIIT, Tabata, fractionné, circuit' },
+  reps:     { label: 'Séries', icon: 'dumbbell', color: '#8b5cf6', desc: 'Musculation : la série à votre rythme, puis le repos chronométré' },
+  emom:     { label: 'Chaque minute', icon: 'clock', color: '#3d7fe0', desc: 'Un exercice au début de chaque minute (EMOM)' },
+  amrap:    { label: 'Max de tours', icon: 'repeat', color: '#f97316', desc: 'Le plus de tours possible dans un temps donné (AMRAP)' },
+  fortime:  { label: 'Contre la montre', icon: 'flag', color: '#db2777', desc: 'Finir le plus vite possible, le chrono monte (For Time)' },
 };
 const EST_SET = 40; // estimated seconds for one untimed set, used only for the displayed totals
 
@@ -631,8 +705,9 @@ const store = {
   set(k, v) { try { localStorage.setItem('sc_' + k, JSON.stringify(v)); } catch {} },
 };
 const DEFAULT_SETTINGS = { beeps: true, cdLen: '3', voice: true, preannounce: true, tenSec: true, halfway: false, vibrate: true,
-  volume: 0.8, sound: 'beep', rate: '1.05', wakelock: true, background: false, tapPause: true, xxl: false, display: 'remaining', theme: 'auto' };
+  volume: 0.8, sound: 'beep', rate: '1.05', wakelock: true, background: false, tapPause: true, swipe: true, display: 'remaining', theme: 'dark' };
 let settings = { ...DEFAULT_SETTINGS, ...store.get('settings', {}) };
+if (settings.theme !== 'light') settings.theme = 'dark';
 let quick = store.get('quick', { work: 30, rest: 15, rounds: 8 });
 
 const newBlock = (type = 'interval') => ({
@@ -857,7 +932,7 @@ function confirmSheet(title, text, ok, onOk, onCancel) {
 }
 function typeSheet(title, cur, onPick) {
   sheet(`<h4>${title}</h4><p>Choisissez comment ce bloc se déroule.</p>${Object.entries(TYPES).map(([k, t]) => `<button class="item type" data-k="${k}">
-      <span class="ic">${t.icon}</span><span class="tx"><b>${t.label}</b><small>${t.desc}</small></span>${k === cur ? '<span class="chk">✓</span>' : ''}</button>`).join('')}`,
+      <span class="tic" style="--bc:${t.color}">${ic(t.icon)}</span><span class="tx"><b>${t.label}</b><small>${t.desc}</small></span>${k === cur ? `<span class="chk">${ic('check')}</span>` : ''}</button>`).join('')}`,
     (el, close) => el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { close(); onPick(b.dataset.k); }));
 }
 const stepHTML = (path, kind = 'time', min = 0, max = 7200) =>
@@ -896,9 +971,9 @@ function show(view) {
 }
 $$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
 function applyTheme() {
-  const t = settings.theme === 'auto' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : settings.theme;
+  const t = settings.theme === 'light' ? 'light' : 'dark';
   document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f3f4f7' : '#0f1115';
+  document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#ffffff' : '#000000';
 }
 matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', applyTheme);
 
@@ -919,9 +994,9 @@ function renderHome() {
   quickSummary();
   const last = history.find(h => profiles.some(p => p.id === h.wid));
   const lw = last && profiles.find(p => p.id === last.wid);
-  $('#resume').innerHTML = lw ? `<div class="resume" role="button" tabindex="0" style="--c:${lw.color}"><div class="t"><small>Reprendre · ${relDate(last.date)}</small><b>${esc(lw.name)}</b><small>${fmtTot(lw)} · ${esc(describe(lw))}</small></div><div class="go">▶</div></div>` : '';
+  $('#resume').innerHTML = lw ? `<div class="resume" role="button" tabindex="0" style="--c:${lw.color}"><div class="t"><small>Reprendre · ${relDate(last.date)}</small><b>${esc(lw.name)}</b><small>${fmtTot(lw)} · ${esc(describe(lw))}</small></div><div class="go">${ic('play')}</div></div>` : '';
   if (lw) $('#resume .resume').onclick = () => startRun(lw);
-  $('#templates').innerHTML = TEMPLATES.map((t, i) => `<button data-t="${i}" style="--c:${t.color}"><b>${esc(t.name)}</b><small>${fmtTot(t)} · ${esc(t.blocks.length > 1 ? t.blocks.length + ' blocs' : TYPES[t.blocks[0].type].label)}</small></button>`).join('');
+  $('#templates').innerHTML = TEMPLATES.map((t, i) => `<button data-t="${i}" style="--c:${t.color}"><i></i><span><b>${esc(t.name)}</b><small>${fmtTot(t)}, ${esc(t.blocks.length > 1 ? t.blocks.length + ' blocs' : TYPES[t.blocks[0].type].label)}</small></span></button>`).join('');
   $$('#templates button').forEach(b => b.onclick = () => preview({ ...clone(TEMPLATES[+b.dataset.t]), id: uid() }, true));
   $('#search').classList.toggle('hidden', profiles.length < 6);
   renderList();
@@ -931,12 +1006,12 @@ function renderList() {
   const list = profiles.filter(p => !q || (p.name + ' ' + describe(p) + ' ' + p.blocks.flatMap(b => b.exercises.map(e => e.name)).join(' ')).toLowerCase().includes(q))
     .sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
   $('#count').textContent = profiles.length || '';
-  if (!profiles.length) { $('#profile-list').innerHTML = `<div class="empty">Aucune séance enregistrée.<br>Touchez <b>＋</b> ou partez d'un modèle ci-dessus.</div>`; return; }
+  if (!profiles.length) { $('#profile-list').innerHTML = `<div class="empty">Aucune séance enregistrée.<br>Touchez « Nouvelle » ou partez d'un modèle ci-dessus.</div>`; return; }
   if (!list.length) { $('#profile-list').innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
   $('#profile-list').innerHTML = list.map(p => `<div class="card" style="--c:${p.color}" data-id="${p.id}">
     <div class="info" role="button" tabindex="0" aria-label="Voir ${esc(p.name || 'la séance')}"><div class="name">${esc(p.name || 'Sans nom')}</div><div class="meta">${fmtTot(p)} · ${esc(describe(p))}</div><div class="bar">${timelineHTML(p)}</div></div>
-    <button class="star ${p.fav ? 'on' : ''}" title="Favori">${p.fav ? '★' : '☆'}</button>
-    <button class="play" title="Démarrer">▶</button></div>`).join('');
+    <button class="star ${p.fav ? 'on' : ''}" title="${p.fav ? 'Retirer des favoris' : 'Mettre en favori'}" aria-pressed="${!!p.fav}">${ic('star')}</button>
+    <button class="play" title="Démarrer ${esc(p.name)}">${ic('play')}</button></div>`).join('');
   $$('#profile-list .card').forEach(c => {
     const p = profiles.find(x => x.id === c.dataset.id);
     c.querySelector('.info').onclick = () => preview(p);
@@ -953,7 +1028,7 @@ const newSheet = () => typeSheet('Nouvelle séance', null, k => { const w = newW
 function preview(p, isTemplate = false) {
   const saved = profiles.some(x => x.id === p.id), past = history.filter(h => h.wid === p.id);
   const ft = past.filter(h => h.forTime).map(h => h.forTime), lp = Math.max(0, ...past.map(h => h.laps || 0));
-  const rec = ft.length ? ` · 🏆 ${fmt(Math.min(...ft))}` : lp ? ` · 🏆 ${lp} tour${lp > 1 ? 's' : ''}` : '';
+  const rec = ft.length ? ` · record ${fmt(Math.min(...ft))}` : lp ? ` · record ${lp} tour${lp > 1 ? 's' : ''}` : '';
   sheet(`<h4>${esc(p.name || 'Sans nom')}</h4><p>${fmtTot(p)} au total${p.repeat > 1 ? ` · répété ${p.repeat} fois` : ''}${past.length ? `<br>Faite ${past.length} fois · dernière fois ${relDate(past[0].date)}${rec}` : ''}</p>
     <div class="timeline" style="height:10px">${timelineHTML(p)}</div>
     <div class="pv-blocks">
@@ -962,9 +1037,9 @@ function preview(p, isTemplate = false) {
         ${b.exercises.filter(e => e.name).length ? `<div style="padding-left:20px"><span>${b.exercises.filter(e => e.name).map(e => esc(e.name + (b.type === 'reps' && e.reps ? ` × ${e.reps}` : ''))).join(' · ')}</span></div>` : ''}`).join('')}
       ${p.cool ? `<div><span class="dot" style="background:var(--cool)"></span>Retour au calme <span>${fmtH(p.cool)}</span></div>` : ''}
     </div>
-    <button class="btn primary block" data-a="play">▶ Démarrer</button>
-    <div class="btn-row"><button class="btn" data-a="edit">✎ ${isTemplate ? 'Personnaliser' : 'Modifier'}</button>${saved ? `<button class="btn" data-a="share">↗ Partager</button>` : `<button class="btn" data-a="save">💾 Enregistrer</button>`}</div>
-    ${saved ? `<button class="item" data-a="steps">☰&nbsp; Voir le détail des étapes</button><button class="item" data-a="dup">⧉&nbsp; Dupliquer</button><button class="item red" data-a="del">🗑&nbsp; Supprimer</button>` : `<button class="item" data-a="steps">☰&nbsp; Voir le détail des étapes</button>`}`,
+    <button class="btn primary block" data-a="play">${ic('play')}Démarrer</button>
+    <div class="btn-row"><button class="btn" data-a="edit">${ic('edit')}${isTemplate ? 'Personnaliser' : 'Modifier'}</button>${saved ? `<button class="btn" data-a="share">${ic('share')}Partager</button>` : `<button class="btn" data-a="save">${ic('save')}Enregistrer</button>`}</div>
+    ${saved ? `<button class="item" data-a="steps">${ic('list')}Voir le détail des étapes</button><button class="item" data-a="dup">${ic('copy')}Dupliquer</button><button class="item red" data-a="del">${ic('trash')}Supprimer</button>` : `<button class="item" data-a="steps">${ic('list')}Voir le détail des étapes</button>`}`,
     (el, close) => el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
       close();
       switch (b.dataset.a) {
@@ -1066,7 +1141,7 @@ let draft = null, draftIsNew = false, draftDirty = false;
 function openEditor(p, isNew = false) {
   draft = migrate(clone(p)); draftIsNew = isNew || !profiles.some(x => x.id === p.id); draftDirty = isNew;
   if (draftIsNew && profiles.some(x => x.id === draft.id)) draft.id = uid();
-  $('#edit-title').textContent = draftIsNew ? 'Nouvelle séance' : 'Modifier';
+  $('#edit-title').textContent = draftIsNew ? 'Création' : 'Modification';
   $('#f-name').value = draft.name;
   const top = (sel, key, kind = 'time', min = 0, max = 7200) => { $(sel).innerHTML = stepHTML(key, kind, min, max); bindStep($(sel).firstChild, () => draft[key], v => { draft[key] = v; changed(); }); };
   top('#f-prep', 'prep'); top('#f-cool', 'cool'); top('#f-repeat', 'repeat', 'num', 1, 20); top('#f-represt', 'repeatRest');
@@ -1102,21 +1177,21 @@ function renderBlocks() {
     else if (t === 'amrap') f = `<div class="fld"><label>Durée</label>${stepHTML(P + '.work')}</div>
         <p class="hint">Un maximum de tours dans le temps imparti. Un bouton « +1 tour » permet de compter pendant la séance.</p>`;
     else f = `<div class="fld"><label>Temps limite (time cap)</label>${stepHTML(P + '.work')}</div>
-        <p class="hint">Chrono qui monte : touchez « ⏭ » quand vous avez fini. Le temps réalisé est enregistré.</p>`;
+        <p class="hint">Chrono qui monte : touchez « J'ai fini » quand vous avez terminé. Le temps réalisé est enregistré.</p>`;
     const isReps = t === 'reps', third = hasDur || isReps;
     const exs = b.exercises.map((e, j) => `<div class="ex ${third ? '' : 'noDur'}">
         <span class="n">${j + 1}.</span><input value="${esc(e.name)}" list="exlist" autocomplete="off" aria-label="Nom de l'exercice ${j + 1}" placeholder="${third ? 'Exercice' : 'Mouvement (ex. 10 pompes)'}" data-txt="${P}.exercises.${j}.name">
         ${hasDur ? `<input type="number" min="0" inputmode="numeric" value="${e.dur || ''}" placeholder="${b.work}s" data-int="${P}.exercises.${j}.dur" title="Durée spécifique (s)" aria-label="Durée spécifique en secondes">` : ''}
         ${isReps ? `<input value="${esc(e.reps || '')}" maxlength="10" placeholder="rép." data-txt="${P}.exercises.${j}.reps" title="Répétitions visées (12, 8-10, max…)" aria-label="Répétitions visées">` : ''}
-        <button data-a="exup" data-i="${i}" data-j="${j}" title="Monter" ${j ? '' : 'disabled'}>↑</button><button data-a="exdel" data-i="${i}" data-j="${j}" title="Retirer">✕</button>
+        <button data-a="exup" data-i="${i}" data-j="${j}" title="Monter" ${j ? '' : 'disabled'}>${ic('up')}</button><button data-a="exdel" data-i="${i}" data-j="${j}" title="Retirer">${ic('x')}</button>
         <input class="note" value="${esc(e.note || '')}" aria-label="Note" placeholder="Note (charge, consigne…)" data-txt="${P}.exercises.${j}.note"></div>`).join('');
     return `<div class="section block" style="--bc:${TYPES[t].color}">
       <div class="hd"><span class="num">${i + 1}</span><input class="bname" value="${esc(b.name)}" aria-label="Nom du bloc" placeholder="Nom du bloc (facultatif)" data-txt="${P}.name">
-        <button class="icon-btn" data-a="bmenu" data-i="${i}" title="Options du bloc" style="width:42px;height:42px">⋮</button></div>
-      <button class="typebtn" data-a="btype" data-i="${i}" title="Changer le type de bloc"><span class="ic">${TYPES[t].icon}</span><span class="tx"><b>${TYPES[t].label}</b><small>${TYPES[t].desc}</small></span><span class="chev">▾</span></button>
+        <button class="icon-btn" data-a="bmenu" data-i="${i}" title="Options du bloc" style="width:42px;height:42px">${ic('more')}</button></div>
+      <button class="typebtn" data-a="btype" data-i="${i}" title="Changer le type de bloc"><span class="tic">${ic(TYPES[t].icon)}</span><span class="tx"><b>${TYPES[t].label}</b><small>${TYPES[t].desc}</small></span><span class="chev">${ic('chevdown')}</span></button>
       ${f}
       <div class="exs"><div class="lbl">${isReps ? 'Exercices (toutes les séries du 1er, puis du 2e…) · répétitions visées' : hasDur ? 'Exercices (en boucle à chaque tour · durée spécifique facultative)' : 'Mouvements à enchaîner'}</div>${exs}
-        <button class="btn small block" data-a="exadd" data-i="${i}">＋ Ajouter un exercice</button></div>
+        <button class="btn small block" data-a="exadd" data-i="${i}">${ic('plus')}Ajouter un exercice</button></div>
       ${i < nb - 1 ? `<div class="fld" style="margin-top:14px"><label><span class="dot" style="background:var(--blockrest)"></span> Repos avant le bloc suivant</label>${stepHTML(P + '.restAfter')}</div>` : ''}
     </div>`;
   }).join('');
@@ -1145,10 +1220,10 @@ $('#blocks').addEventListener('click', e => {
     case 'exdel': bl.exercises.splice(j, 1); changed(true); break;
     case 'exup': if (j > 0) { [bl.exercises[j - 1], bl.exercises[j]] = [bl.exercises[j], bl.exercises[j - 1]]; changed(true); } break;
     case 'bmenu': sheet(`<h4>Bloc ${i + 1} · ${esc(bl.name || TYPES[bl.type].label)}</h4>
-        <button class="item" data-x="up" ${i === 0 ? 'disabled style="opacity:.4"' : ''}>↑&nbsp; Monter</button>
-        <button class="item" data-x="down" ${i === draft.blocks.length - 1 ? 'disabled style="opacity:.4"' : ''}>↓&nbsp; Descendre</button>
-        <button class="item" data-x="dup">⧉&nbsp; Dupliquer le bloc</button>
-        <button class="item red" data-x="del" ${draft.blocks.length < 2 ? 'disabled style="opacity:.4"' : ''}>🗑&nbsp; Supprimer le bloc</button>`, (el, close) =>
+        <button class="item" data-x="up" ${i === 0 ? 'disabled style="opacity:.4"' : ''}>${ic('up')}Monter</button>
+        <button class="item" data-x="down" ${i === draft.blocks.length - 1 ? 'disabled style="opacity:.4"' : ''}>${ic('down')}Descendre</button>
+        <button class="item" data-x="dup">${ic('copy')}Dupliquer le bloc</button>
+        <button class="item red" data-x="del" ${draft.blocks.length < 2 ? 'disabled style="opacity:.4"' : ''}>${ic('trash')}Supprimer le bloc</button>`, (el, close) =>
         el.querySelectorAll('[data-x]').forEach(x => x.onclick = () => { close(); const B = draft.blocks;
           if (x.dataset.x === 'up' && i > 0) [B[i - 1], B[i]] = [B[i], B[i - 1]];
           if (x.dataset.x === 'down' && i < B.length - 1) [B[i + 1], B[i]] = [B[i], B[i + 1]];
@@ -1185,8 +1260,6 @@ $('#edit-preview').onclick = () => stepsSheet(draft, buildPhases(draft), -1);
 
 /* ================= Runner ================= */
 let runState = null, rafId = 0, tickTimer = 0;
-const CIRC = 2 * Math.PI * 54;
-$('#run-arc').style.strokeDasharray = CIRC;
 function startRun(w, fromEditor = false, resume = null) {
   audio();
   const phases = buildPhases(w).map(x => ({ ...x }));
@@ -1195,9 +1268,8 @@ function startRun(w, fromEditor = false, resume = null) {
   $('#run-title').textContent = w.name || 'Séance';
   $('#done').classList.add('hidden');
   $('#run').classList.remove('hidden', 'locked');
-  $('#run').classList.toggle('xxl', !!settings.xxl);
-  $('#run-lock').textContent = '🔓';
-  muted = false; $('#run-mute').textContent = '🔊';
+  setIc($('#run-lock'), 'unlock');
+  muted = false; setIc($('#run-mute'), 'sound');
   bgStart(); lockScreen();
   if (resume) { // restore an interrupted session, paused exactly where it stopped
     if (Array.isArray(resume.durs) && resume.durs.length === phases.length) resume.durs.forEach((d, i) => phases[i].dur = num(d, phases[i].dur, 1, 86400));
@@ -1219,7 +1291,7 @@ function enterPhase(i) {
   s.idx = i; s.phaseStart = Date.now(); if (s.paused) s.pausedAt = s.phaseStart;
   s.lastSec = null; s.half = false; s.said10 = false; s.pre = false;
   const ph = s.phases[i], P = PHASE[ph.kind];
-  $('#run').style.setProperty('--phase', P.bg);
+  $('#run').style.setProperty('--phase', P.color);
   if (!s.quiet) {
     $('#run').classList.remove('flash'); void $('#run').offsetWidth; $('#run').classList.add('flash');
     if (settings.beeps) snd().go(ph.kind);
@@ -1244,7 +1316,8 @@ function finish() {
   setTimeout(() => say('Séance terminée. Bravo !'), 600);
   const h = logSession(true);
   const laps = Object.values(s.laps).reduce((a, x) => a + x, 0), sets = s.phases.filter(x => x.manual).length, efforts = s.phases.filter(x => isWork(x.kind) && !x.manual).length;
-  $('#done-sum').innerHTML = `${esc(s.w.name || 'Séance')}<br>${fmt(h?.secs ?? totalDur())}${efforts ? ` · ${efforts} phase${efforts > 1 ? 's' : ''} d'effort` : ''}${sets ? ` · ${sets} série${sets > 1 ? 's' : ''}` : ''}${laps ? ` · ${laps} tour${laps > 1 ? 's' : ''} compté${laps > 1 ? 's' : ''}` : ''}${s.forTime ? `<br>Chrono : <b>${fmt(s.forTime)}</b>` : ''}`;
+  $('#done-time').textContent = fmt(h?.secs ?? totalDur()); $('#done-time').dataset.len = $('#done-time').textContent.length;
+  $('#done-sum').innerHTML = `<b>${esc(s.w.name || 'Séance')}</b>${efforts ? ` · ${efforts} phase${efforts > 1 ? 's' : ''} d'effort` : ''}${sets ? ` · ${sets} série${sets > 1 ? 's' : ''}` : ''}${laps ? ` · ${laps} tour${laps > 1 ? 's' : ''} compté${laps > 1 ? 's' : ''}` : ''}${s.forTime ? `<br>Chrono : <b>${fmt(s.forTime)}</b>` : ''}`;
   $('#done-rpe').innerHTML = Array.from({ length: 10 }, (_, i) => `<button data-r="${i + 1}">${i + 1}</button>`).join('');
   $$('#done-rpe button').forEach(b => b.onclick = () => { $$('#done-rpe button').forEach(x => x.classList.toggle('on', x === b)); if (s.hist) s.hist.rpe = +b.dataset.r; saveHistory(); });
   $('#done-note').value = '';
@@ -1296,10 +1369,11 @@ function render() {
   $('#run-blk').textContent = ph.bi !== undefined && nBlocks > 1 ? `${ph.bname} · ${ph.bi + 1}/${nBlocks}` : (ph.bi !== undefined && ph.bname !== TYPES[ph.btype].label ? ph.bname : '');
   $('#run-phase').textContent = ph.label || P.label;
   const showUp = ph.countUp || settings.display === 'elapsed';
-  $('#run-time').textContent = ph.manual ? fmt(Math.floor(raw)) : showUp ? fmt(Math.floor(el)) : fmt(Math.ceil(left - .001));
+  const rt = $('#run-time'), tx = ph.manual ? fmt(Math.floor(raw)) : showUp ? fmt(Math.floor(el)) : fmt(Math.ceil(left - .001));
+  if (rt.textContent !== tx) { rt.textContent = tx; rt.dataset.len = tx.length; }
   $('#run-ex').textContent = (ph.kind === 'work' || ph.lapable) ? (ph.ex || '') : '';
   $('#run-note').textContent = ph.manual ? [repsText(ph.qty), ph.note].filter(Boolean).join(' · ') : ph.kind === 'work' ? ph.note || '' : ph.countUp ? `limite ${fmt(ph.dur)}` : '';
-  $('#run-arc').style.strokeDashoffset = ph.manual ? 0 : CIRC * (ph.countUp ? 1 - el / ph.dur : el / ph.dur);
+  $('#run-arc').style.transform = `scaleX(${ph.manual ? 1 : ph.countUp ? el / ph.dur : 1 - el / ph.dur})`;
   const c = [];
   if (ph.reps > 1) c.push(['Passage', `${ph.rep}/${ph.reps}`]);
   if (isReps && ph.sets > 1) c.push(['Exercice', `${ph.set}/${ph.sets}`]);
@@ -1307,23 +1381,27 @@ function render() {
   if (!isReps && ph.sets > 1) c.push(['Série', `${ph.set}/${ph.sets}`]);
   if (ph.lapable) c.unshift(['Tours faits', s.laps[s.idx] || 0]);
   c.splice(2); c.push(['Restant', approx + fmt(tot - tEl)]);
-  $('#run-counters').innerHTML = c.map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('');
+  const ch = c.map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('');
+  if (s.cHtml !== ch) $('#run-counters').innerHTML = s.cHtml = ch;
   $('#run-lapbox').classList.toggle('hidden', !ph.lapable);
-  $('#run-setdone').classList.toggle('hidden', !ph.manual);
-  $('#run-chips').classList.toggle('hidden', !!ph.manual);
+  const fin = !!(ph.manual || ph.countUp);
+  $('#run-setdone').classList.toggle('hidden', !fin);
+  if (fin) $('#run-setdone').lastChild.textContent = ph.manual ? 'Série terminée' : "J'ai fini";
+  $('#run-chips').classList.toggle('hidden', fin);
   $('#run-laps').textContent = s.laps[s.idx] || 0;
   $('#run-prog').style.width = (100 * tEl / tot) + '%';
   $('#run-elapsed').textContent = fmt(tEl);
-  $('#run-len').textContent = '−' + approx + fmt(tot - tEl);
+  $('#run-len').textContent = approx + '−' + fmt(tot - tEl);
   $('#run-paused').classList.toggle('hidden', !s.paused);
-  $('#run-toggle').textContent = s.paused ? '▶' : '⏸';
+  setIc($('#run-toggle'), s.paused ? 'play' : 'pause'); $('#run').classList.toggle('paused', s.paused);
   $('#run-toggle').setAttribute('aria-label', s.paused ? 'Reprendre' : 'Pause');
   const nb = $('#run-next-btn'), nl = ph.manual ? 'Série terminée' : ph.countUp ? "J'ai fini" : 'Phase suivante';
-  nb.textContent = ph.countUp || ph.manual ? '✓' : '⏭'; nb.title = nl; nb.setAttribute('aria-label', nl);
+  setIc(nb, ph.countUp || ph.manual ? 'check' : 'next'); nb.title = nl; nb.setAttribute('aria-label', nl);
   $('#run').classList.toggle('lastsec', !ph.manual && !s.paused && left <= 3 && ph.dur > 4);
   const nx = s.phases[s.idx + 1];
-  $('#run-next').innerHTML = !nx ? `<small>Dernière ligne droite 💪</small>`
-    : `<small>Ensuite :</small> <b>${nx.kind === 'work' && nx.ex ? esc(nx.ex) : esc(nx.label || PHASE[nx.kind].label)}</b> · ${nx.manual ? `série ${nx.round}/${nx.rounds}` : fmt(nx.dur)}`;
+  const nh = !nx ? 'Dernière ligne droite'
+    : `Ensuite <b>${nx.kind === 'work' && nx.ex ? esc(nx.ex) : esc(nx.label || PHASE[nx.kind].label)}</b>, ${nx.manual ? `série ${nx.round}/${nx.rounds}` : fmt(nx.dur)}`;
+  if (s.nHtml !== nh) $('#run-next').innerHTML = s.nHtml = nh;
 }
 function togglePause() {
   const s = runState; if (!s || s.done) return;
@@ -1382,14 +1460,22 @@ function offerResume() {
   const w = migrate(sn.w), n = buildPhases(w).length, i = num(sn.idx, 0, 0, 1e4), mins = Math.round((Date.now() - sn.at) / 6e4);
   if (i >= n) return clearSnap();
   sheet(`<h4>Reprendre la séance ?</h4><p>« ${esc(w.name || 'Séance')} » a été interrompue à l'étape ${i + 1} sur ${n}, ${mins < 1 ? "à l'instant" : mins < 60 ? `il y a ${mins} min` : `il y a ${Math.round(mins / 60)} h`}.</p>
-    <div class="btn-row"><button class="btn" data-a="no">Abandonner</button><button class="btn primary" data-a="ok">▶ Reprendre</button></div>`, (el, close) => {
+    <div class="btn-row"><button class="btn" data-a="no">Abandonner</button><button class="btn primary" data-a="ok">${ic('play')}Reprendre</button></div>`, (el, close) => {
     el.querySelector('[data-a=no]').onclick = () => { close(); clearSnap(); };
     el.querySelector('[data-a=ok]').onclick = () => { close(); startRun(w, false, sn); };
   });
 }
 
 $('#run-toggle').onclick = togglePause;
-$('#run-ring').onclick = () => { if (settings.tapPause && !$('#run').classList.contains('locked')) togglePause(); };
+/* Stage gestures: a tap pauses, a horizontal swipe goes to the next / previous phase. */
+(() => { const st = $('#run-ring'); let p = null;
+  st.onpointerdown = e => { p = { x: e.clientX, y: e.clientY, t: Date.now() }; };
+  st.onpointercancel = () => { p = null; };
+  st.onpointerup = e => { const o = p; p = null; if (!o || $('#run').classList.contains('locked')) return;
+    const dx = e.clientX - o.x, dy = e.clientY - o.y, dt = Date.now() - o.t;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy) && dt < 700) { if (settings.swipe) jump(dx < 0 ? 1 : -1); }
+    else if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && dt < 500 && settings.tapPause) togglePause(); };
+})();
 $('#run-next-btn').onclick = () => jump(1);
 $('#run-setdone').onclick = () => jump(1);
 $('#run-prev').onclick = () => jump(-1);
@@ -1399,15 +1485,15 @@ $('#run-lap').onclick = () => lap(1);
 $('#run-lapundo').onclick = () => lap(-1);
 $('#run-stop').onclick = stopRun;
 $('#run-plan').onclick = () => stepsSheet(runState.w, runState.phases, runState.idx, i => enterPhase(i));
-$('#run-mute').onclick = () => { muted = !muted; $('#run-mute').textContent = muted ? '🔇' : '🔊'; if (muted && 'speechSynthesis' in window) speechSynthesis.cancel(); };
+$('#run-mute').onclick = () => { muted = !muted; setIc($('#run-mute'), muted ? 'mute' : 'sound'); if (muted && 'speechSynthesis' in window) speechSynthesis.cancel(); };
 /* Lock: tap to lock, long-press to unlock */
 const lockHint = () => { $('#run-lockhint').classList.remove('hidden'); setTimeout(() => $('#run-lockhint').classList.add('hidden'), 1800); };
 (() => { const b = $('#run-lock'); let t = null;
-  b.onpointerdown = () => { if (!$('#run').classList.contains('locked')) return; t = setTimeout(() => { $('#run').classList.remove('locked'); b.textContent = '🔓'; $('#run-lockhint').classList.add('hidden'); buzz(50); t = 'done'; }, 700); };
+  b.onpointerdown = () => { if (!$('#run').classList.contains('locked')) return; t = setTimeout(() => { $('#run').classList.remove('locked'); setIc(b, 'unlock'); $('#run-lockhint').classList.add('hidden'); buzz(50); t = 'done'; }, 700); };
   b.onpointerup = b.onpointerleave = () => { if (t && t !== 'done') clearTimeout(t); };
   b.onclick = () => { if (t === 'done') { t = null; return; }
     if ($('#run').classList.contains('locked')) return lockHint();
-    $('#run').classList.add('locked'); b.textContent = '🔒'; toast('Écran verrouillé · appui long pour déverrouiller'); };
+    $('#run').classList.add('locked'); setIc(b, 'lock'); toast('Écran verrouillé'); };
 })();
 $('#done-close').onclick = closeRun;
 $('#done-again').onclick = () => { const { w, fromEditor } = runState; closeRun(); startRun(w, fromEditor); };
@@ -1489,15 +1575,15 @@ function renderHistory() {
   let w = sow(Date.now()), streak = 0; if (!wset.has(+w)) w = addD(w, -7);
   while (wset.has(+w)) { streak++; w = addD(w, -7); }
   let best = 0, run = 0; weeks.forEach((t, i) => { run = i && +addD(weeks[i - 1], 7) === t ? run + 1 : 1; best = Math.max(best, run); });
-  $('#st-streak').textContent = streak; $('#st-streak-rec').textContent = `max ${best}`;
+  $('#st-streak').textContent = streak; $('#st-streak-rec').textContent = `record ${best}`;
   renderChart(bk, from); renderCal();
   // per workout
   const groups = new Map(); inR.forEach(h => { const k = wkKey(h); (groups.get(k) || groups.set(k, []).get(k)).push(h); });
   $('#pg-workouts').innerHTML = [...groups].sort((a, b) => b[1].length - a[1].length).map(([k, hs]) => {
     const ft = hs.filter(h => h.forTime).map(h => h.forTime), lp = Math.max(0, ...hs.map(h => h.laps || 0));
-    const rec = ft.length ? `🏆 ${fmt(Math.min(...ft))}` : lp ? `🏆 ${plural(lp, 'tour')}` : '';
+    const rec = ft.length ? ic('trophy') + fmt(Math.min(...ft)) : lp ? ic('trophy') + plural(lp, 'tour') : '';
     return `<div class="hist" data-wk="${esc(k)}" style="--c:${hs[0].color}"><div class="t"><b>${esc(hs[0].name)}</b>
-      <div class="d">${plural(hs.length, 'séance')} · ${fmtDur(sumSecs(hs))} · ${relDate(hs[0].date)}</div></div>${rec ? `<span class="rec">${rec}</span>` : ''}<span class="chev">›</span></div>`; }).join('')
+      <div class="d">${plural(hs.length, 'séance')} · ${fmtDur(sumSecs(hs))} · ${relDate(hs[0].date)}</div></div>${rec ? `<span class="rec">${rec}</span>` : ''}<span class="chev">${ic('right')}</span></div>`; }).join('')
     || `<div class="empty">Aucune séance sur cette période.</div>`;
   $$('#pg-workouts [data-wk]').forEach(r => r.onclick = () => workoutSheet(history.filter(h => wkKey(h) === r.dataset.wk)));
   // journal
@@ -1582,7 +1668,7 @@ function sessionSheet(h) {
     <div class="fld" style="margin-top:14px"><label>Ressenti de l'effort (1 = très facile · 10 = maximal)</label>
       <div class="rpe">${Array.from({ length: 10 }, (_, i) => `<button data-r="${i + 1}" class="${h.rpe === i + 1 ? 'on' : ''}">${i + 1}</button>`).join('')}</div></div>
     <div class="fld" style="margin-top:12px"><label>Note</label><textarea rows="2" maxlength="300" placeholder="Charge, sensations…">${esc(h.note || '')}</textarea></div>
-    <div class="btn-row">${w ? `<button class="btn primary" data-a="redo">↻ Refaire</button>` : ''}<button class="btn danger" data-a="del">🗑 Supprimer</button></div>`, (el, close) => {
+    <div class="btn-row">${w ? `<button class="btn primary" data-a="redo">${ic('redo')}Refaire</button>` : ''}<button class="btn danger" data-a="del">${ic('trash')}Supprimer</button></div>`, (el, close) => {
     el.querySelectorAll('.rpe button').forEach(b => b.onclick = () => { h.rpe = h.rpe === +b.dataset.r ? undefined : +b.dataset.r;
       el.querySelectorAll('.rpe button').forEach(x => x.classList.toggle('on', +x.dataset.r === h.rpe)); saveHistory(); renderHistory(); });
     const ta = el.querySelector('textarea'); ta.oninput = () => { h.note = ta.value.slice(0, 300); saveHistory(); }; ta.onchange = renderHistory;
@@ -1603,7 +1689,7 @@ function lineChart(box, pts, fy, better) {
   if (n > 1) g += `<path class="ln" d="${pts.map((p, i) => `${i ? 'L' : 'M'}${x(i)},${y(p.v)}`).join('')}"/>`;
   pts.forEach((p, i) => { g += `<circle class="pt" cx="${x(i)}" cy="${y(p.v)}" r="${i === bi ? 5 : 4}"/>`; });
   lab.forEach(i => { const a = x(i) < 30 ? 'start' : x(i) > W - 30 ? 'end' : 'middle';
-    g += `<text class="val" x="${a === 'start' ? x(i) - 5 : a === 'end' ? x(i) + 5 : x(i)}" y="${y(pts[i].v) - 10}" text-anchor="${a}">${i === bi ? '🏆 ' : ''}${esc(fy(pts[i].v))}</text>`; });
+    g += `<text class="val" x="${a === 'start' ? x(i) - 5 : a === 'end' ? x(i) + 5 : x(i)}" y="${y(pts[i].v) - 10}" text-anchor="${a}">${esc(fy(pts[i].v))}</text>`; });
   g += `<text x="0" y="${H - 6}">${dfmt(pts[0].date, { day: 'numeric', month: 'short' })}</text>`;
   if (n > 1) g += `<text x="${W}" y="${H - 6}" text-anchor="end">${dfmt(pts[n - 1].date, { day: 'numeric', month: 'short' })}</text>`;
   pts.forEach((p, i) => { g += `<circle class="hit" data-i="${i}" cx="${x(i)}" cy="${y(p.v)}" r="${Math.max(10, Math.min(22, pw / n / 2))}" fill="transparent"/>`; });
@@ -1626,7 +1712,7 @@ function workoutSheet(hs) { // hs: newest first
       <div class="stat"><b>${esc(third[0])}</b><small>${third[1]}</small></div></div>
     <div class="chart-cap" style="margin-top:16px">${m.cap}</div><div class="chart" id="wk-chart"></div>
     ${pts.length < 2 ? `<p class="hint" style="text-align:center">Refaites cette séance pour voir votre courbe de progression.</p>` : ''}
-    ${w ? `<button class="btn primary block" data-a="redo" style="margin-top:12px">▶ Refaire cette séance</button>` : ''}
+    ${w ? `<button class="btn primary block" data-a="redo" style="margin-top:12px">${ic('play')}Refaire cette séance</button>` : ''}
     <h2>Dernières fois</h2>${hs.slice(0, 8).map(histRow).join('')}`, (el, close) => {
     lineChart(el.querySelector('#wk-chart'), pts, m.f, m.better);
     el.querySelector('[data-a=redo]')?.addEventListener('click', () => { close(); startRun(w); });
