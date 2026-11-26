@@ -181,7 +181,33 @@
   .steps li.past { opacity: .45; }
   .steps li .k { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .steps li .tm { font-variant-numeric: tabular-nums; color: var(--muted); }
-  .steps li.bh { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); cursor: default; padding: 12px 8px 4px; }
+  .steps li.bh { cursor: default; padding: 14px 8px 8px 12px; margin-top: 6px; border-left: 4px solid var(--bc); border-radius: 0 10px 10px 0; background: var(--panel2); align-items: flex-start; }
+  .steps li.bh > div { flex: 1; min-width: 0; }
+  .steps li.bh b { font-size: 15px; }
+  .steps li.bh small { display: block; color: var(--muted); font-weight: 400; margin-top: 2px; }
+  .steps li.bh.cur { background: color-mix(in srgb, var(--bc) 22%, var(--panel2)); }
+  .steps li.bh.cur b { font-weight: 800; }
+  .steps li.grp { display: block; padding: 0 0 0 14px; cursor: default; }
+  .steps li.grp .steps li { padding: 7px 8px; }
+  .steps li.sg { margin-top: 4px; }
+  .steps summary { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; list-style: none; }
+  .steps summary::-webkit-details-marker { display: none; }
+  .steps summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+  .steps details[open] > summary::before { transform: rotate(90deg); }
+  .steps summary.cur { background: var(--panel2); }
+  .steps summary.past { opacity: .5; }
+  .steps details > .steps { padding-left: 14px; border-left: 1px dashed var(--line); margin-left: 12px; }
+  .steps .rn { display: inline-grid; place-items: center; min-width: 22px; height: 20px; border-radius: 6px; background: var(--panel2); color: var(--muted); font-size: 11px; font-weight: 700; margin-right: 8px; padding: 0 4px; }
+  .steps .tm { display: flex; gap: 6px; }
+  .tw, .tr { font-variant-numeric: tabular-nums; }
+  .steps .tw { color: var(--text); }
+  .steps .tr { color: var(--rest); }
+  .steps .tr::before { content: "+ "; color: var(--muted); }
+  .steps .xn { color: var(--accent); font-weight: 700; min-width: 30px; text-align: right; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: -4px 0 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .legend i.tw { background: var(--work); } .legend i.tr { background: var(--rest); }
+  .legend i.tr::before { content: none; }
   .pv-blocks { margin: 12px 0; }
   .pv-blocks div { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
   .pv-blocks div:last-child { border: none; }
@@ -821,23 +847,68 @@ function preview(p, isTemplate = false) {
         case 'edit': openEditor(p, isTemplate); break;
         case 'save': profiles.unshift(clone(p)); saveProfiles(); renderHome(); toast('Séance enregistrée'); break;
         case 'share': share(p); break;
-        case 'steps': stepsSheet(buildPhases(p), -1); break;
+        case 'steps': stepsSheet(p, buildPhases(p), -1); break;
         case 'dup': { const i = profiles.indexOf(p); profiles.splice(i + 1, 0, { ...clone(p), id: uid(), name: p.name + ' (copie)', fav: false }); saveProfiles(); renderHome(); toast('Séance dupliquée'); break; }
         case 'del': { const i = profiles.indexOf(p); profiles.splice(i, 1); saveProfiles(); renderHome();
           toast('Séance supprimée', 'Annuler', () => { profiles.splice(i, 0, p); saveProfiles(); renderHome(); }); break; }
       }
     }));
 }
-function stepsSheet(ph, cur, onPick) {
-  let html = '', lastB = null;
+/* Structured plan: block header → one foldable line per series → one line per tour (effort + repos together). */
+function stepsSheet(w, ph, cur, onPick) {
+  const sum = (a, b) => ph.slice(a, b + 1).reduce((t, x) => t + x.dur, 0);
+  const total = sum(0, ph.length - 1), works = ph.filter(x => isWork(x.kind));
+  // 1. group phases: singles (prep, transitions, cool) and blocks → series → items
+  const segs = []; let blk = null;
   ph.forEach((x, i) => {
-    const key = x.bi === undefined ? null : `${x.rep}-${x.bi}`;
-    if (key && key !== lastB && x.kind !== 'blockrest') { lastB = key; html += `<li class="bh">${esc(x.bname)}${x.reps > 1 ? ` · passage ${x.rep}` : ''}</li>`; }
-    const lbl = x.kind === 'work' ? (x.ex || 'Effort') + (x.sets > 1 ? ` · S${x.set}` : '') + ` · T${x.round}` : x.lapable ? `${PHASE[x.kind].label}${x.ex ? ' · ' + x.ex : ''}` : PHASE[x.kind].label;
-    html += `<li data-i="${i}" class="${i === cur ? 'cur' : i < cur ? 'past' : ''}"><span class="dot" style="background:${PHASE[x.kind].color}"></span><span class="k">${esc(lbl)}</span><span class="tm">${fmt(x.dur)}</span></li>`;
+    if (x.bi === undefined || x.kind === 'blockrest') { blk = null; segs.push({ single: i }); return; }
+    const key = `${x.rep}-${x.bi}`;
+    if (!blk || blk.key !== key) { blk = { key, x, from: i, to: i, series: [] }; segs.push(blk); }
+    blk.to = i;
+    if (x.kind === 'setrest') { blk.series.push({ sep: i }); return; }
+    let s = blk.series.at(-1);
+    if (!s || s.sep !== undefined || s.set !== (x.set || 1)) { s = { set: x.set || 1, from: i, to: i, items: [] }; blk.series.push(s); }
+    s.to = i;
+    const last = s.items.at(-1);
+    if (x.kind === 'rest' && last && last.rest === undefined && ph[last.i].kind === 'work') last.rest = i;
+    else s.items.push({ i });
   });
-  sheet(`<h4>Plan de la séance</h4><p>${ph.length} étapes${onPick ? ' · touchez une étape pour y aller' : ''}</p><ul class="steps">${html}</ul>`, (el, close) => {
-    el.querySelector('li.cur')?.scrollIntoView({ block: 'center' });
+  // 2. render
+  const state = (a, b) => cur < 0 ? '' : cur >= a && cur <= b ? 'cur' : b < cur ? 'past' : '';
+  const dot = k => `<span class="dot" style="background:${PHASE[k].color}"></span>`;
+  const single = i => { const x = ph[i];
+    const lbl = x.kind === 'blockrest' ? `${PHASE[x.kind].label} → ${x.nextBlock}` : PHASE[x.kind].label;
+    return `<li data-i="${i}" class="sg ${state(i, i)}">${dot(x.kind)}<span class="k">${esc(lbl)}</span><span class="tm">${fmt(x.dur)}</span></li>`; };
+  // merge consecutive identical tours (same exercise, effort and rest) into one line
+  const sig = it => { const x = ph[it.i]; return x.lapable ? null : `${x.ex}|${x.dur}|${it.rest !== undefined ? ph[it.rest].dur : '-'}`; };
+  const runs = items => items.reduce((acc, it) => { const r = acc.at(-1);
+    if (r && sig(it) !== null && sig(r[0]) === sig(it)) r.push(it); else acc.push([it]); return acc; }, []);
+  const item = run => { const it = run[0], x = ph[it.i], lastIt = run.at(-1), end = lastIt.rest ?? lastIt.i, n = run.length;
+    if (x.lapable) return `<li data-i="${it.i}" class="${state(it.i, end)}">${dot(x.kind)}<span class="k">${esc(PHASE[x.kind].label + (x.ex ? ' · ' + x.ex : ''))}</span><span class="tm"><span class="tw">${fmt(x.dur)}</span></span></li>`;
+    const rn = x.rounds > 1 ? `<span class="rn">${n > 1 ? `${x.round}–${ph[lastIt.i].round}` : x.round}</span>` : '';
+    const inRun = cur >= it.i && cur <= end ? ` <small style="color:var(--muted)">· tour ${ph[cur].round}</small>` : '';
+    const tm = `<span class="tw">${fmt(x.dur)}</span>${it.rest !== undefined ? `<span class="tr">${fmt(ph[it.rest].dur)}</span>` : ''}${n > 1 ? `<span class="xn">×${n}</span>` : ''}`;
+    return `<li data-i="${it.i}" class="${state(it.i, end)}">${dot(x.kind)}<span class="k">${rn}${esc(x.ex || 'Effort')}${n > 1 && cur >= 0 ? inRun : ''}</span><span class="tm">${tm}</span></li>`; };
+  let html = '';
+  segs.forEach(sg => {
+    if (sg.single !== undefined) { html += single(sg.single); return; }
+    const b = w.blocks[sg.x.bi], realSeries = sg.series.filter(s => s.sep === undefined);
+    html += `<li class="bh ${state(sg.from, sg.to)}" style="--bc:${TYPES[b.type].color}"><div><b>${esc(sg.x.bname)}</b>${sg.x.reps > 1 ? ` <small>· passage ${sg.x.rep}/${sg.x.reps}</small>` : ''}
+      <small>${esc(blockDesc(b))}</small></div><span class="tm">${fmt(sum(sg.from, sg.to))}</span></li>`;
+    sg.series.forEach(s => {
+      if (s.sep !== undefined) { html += single(s.sep); return; }
+      const list = `<ul class="steps">${runs(s.items).map(item).join('')}</ul>`;
+      if (realSeries.length < 2) { html += `<li class="grp">${list}</li>`; return; }
+      const open = cur >= 0 ? (cur >= s.from && cur <= s.to) : s === realSeries[0];
+      const n = s.items.length;
+      html += `<li class="grp"><details ${open ? 'open' : ''}><summary class="${state(s.from, s.to)}"><span class="k">Série ${s.set}/${realSeries.length} · ${n} tour${n > 1 ? 's' : ''}</span><span class="tm">${fmt(sum(s.from, s.to))}</span></summary>${list}</details></li>`;
+    });
+  });
+  sheet(`<h4>Plan de la séance</h4>
+    <p>${fmt(total)} · ${w.blocks.length > 1 ? w.blocks.length + ' blocs · ' : ''}${works.length} effort${works.length > 1 ? 's' : ''} (${fmt(works.reduce((a, x) => a + x.dur, 0))})${onPick ? '<br>Touchez une ligne pour y aller' : ''}</p>
+    <div class="legend"><span><i class="tw"></i>effort</span><span><i class="tr"></i>repos</span></div>
+    <ul class="steps plan">${html}</ul>`, (el, close) => {
+    el.querySelector('.steps li[data-i].cur')?.scrollIntoView({ block: 'center' });
     if (onPick) el.querySelectorAll('li[data-i]').forEach(li => li.onclick = () => { close(); onPick(+li.dataset.i); });
   });
 }
@@ -972,7 +1043,7 @@ $('#edit-back').onclick = () => draftDirty
   ? confirmSheet('Quitter sans enregistrer ?', 'Les modifications seront perdues.', 'Quitter', () => show('home'))
   : show('home');
 $('#edit-start').onclick = () => { if (totalOf(draft) > 0) startRun(clone(draft), true); };
-$('#edit-preview').onclick = () => stepsSheet(buildPhases(draft), -1);
+$('#edit-preview').onclick = () => stepsSheet(draft, buildPhases(draft), -1);
 
 /* ================= Runner ================= */
 let runState = null, rafId = 0, tickTimer = 0;
@@ -1146,7 +1217,7 @@ $('#run-minus').onclick = () => adjust(-10);
 $('#run-lap').onclick = () => lap(1);
 $('#run-lapundo').onclick = () => lap(-1);
 $('#run-stop').onclick = stopRun;
-$('#run-plan').onclick = () => stepsSheet(runState.phases, runState.idx, i => enterPhase(i));
+$('#run-plan').onclick = () => stepsSheet(runState.w, runState.phases, runState.idx, i => enterPhase(i));
 $('#run-mute').onclick = () => { muted = !muted; $('#run-mute').textContent = muted ? '🔇' : '🔊'; if (muted && 'speechSynthesis' in window) speechSynthesis.cancel(); };
 /* Lock: tap to lock, long-press to unlock */
 (() => { const b = $('#run-lock'); let t = null;
