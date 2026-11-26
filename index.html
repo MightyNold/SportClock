@@ -17,26 +17,59 @@
 <style>
   /* "Tableau d'affichage": black board, giant condensed digits. Colour is reserved for the phases; the rest of the interface is monochrome. */
   @font-face { font-family: 'Barlow Condensed'; font-weight: 600; font-display: swap; src: url('fonts/barlow-condensed-600.woff2') format('woff2'); }
-  :root {
+  /* Themes. Every theme sets the same tokens: surfaces, text, one accent for the interface, and the phase colours tuned for its background. */
+  :root { --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif; --tabs-h: calc(58px + env(safe-area-inset-bottom)); --radius: 16px; }
+  :root, [data-theme=dark] { /* Noir: the scoreboard */
     --bg: #000; --panel: #131316; --panel2: #1e1e22; --line: #2d2d33; --text: #f5f5f7; --muted: #9b9ba3;
-    --accent: #f5f5f7; --on-accent: #000;
+    --accent: #f5f5f7; --on-accent: #000; --glow: transparent; --edge: rgba(255,255,255,.05);
     --prep: #ffc21a; --work: #ff4d3d; --rest: #3ddc68; --setrest: #4da3ff;
     --blockrest: #2ed3e6; --cool: #b18cff; --amrap: #ff8a1f; --fortime: #ff5fa2;
-    --display: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
-    --tabs-h: calc(58px + env(safe-area-inset-bottom));
-    --radius: 16px;
   }
-  [data-theme=light] {
+  [data-theme=minuit], [data-theme=or], [data-theme=sapin], [data-theme=bordeaux], [data-theme=titane] { /* dark themes share the bright phase colours */
+    --prep: #ffc21a; --work: #ff4d3d; --rest: #3ddc68; --setrest: #4da3ff;
+    --blockrest: #2ed3e6; --cool: #b18cff; --amrap: #ff8a1f; --fortime: #ff5fa2;
+  }
+  [data-theme=minuit] { /* Minuit: deep navy, ice-blue accent */
+    --bg: #060a18; --panel: #0e1530; --panel2: #172043; --line: #283460; --text: #eef2ff; --muted: #9ba8d0;
+    --accent: #a9c7ff; --on-accent: #06102b; --glow: #16245c; --edge: rgba(170,195,255,.09);
+    --setrest: #6fb4ff;
+  }
+  [data-theme=or] { /* Or noir: warm black, champagne gold */
+    --bg: #0b0a08; --panel: #171510; --panel2: #24211a; --line: #3a352b; --text: #f4eddd; --muted: #aba290;
+    --accent: #dcbb73; --on-accent: #1b1404; --glow: #2c2210; --edge: rgba(220,187,115,.11);
+    --prep: #ffd24d;
+  }
+  [data-theme=sapin] { /* Sapin: racing green and cream */
+    --bg: #05130e; --panel: #0c211a; --panel2: #143027; --line: #25493d; --text: #eef5ec; --muted: #97b6a9;
+    --accent: #f0e6c4; --on-accent: #0a1f17; --glow: #0f3d2c; --edge: rgba(240,230,196,.08);
+    --rest: #5cf08a;
+  }
+  [data-theme=bordeaux] { /* Bordeaux: deep wine, rose gold */
+    --bg: #14060a; --panel: #230c13; --panel2: #33131c; --line: #4e2432; --text: #fbeef0; --muted: #c59da6;
+    --accent: #f0b9a6; --on-accent: #2a0c12; --glow: #421020; --edge: rgba(240,185,166,.09);
+    --work: #ff6a4d; --fortime: #ff7ab3;
+  }
+  [data-theme=titane] { /* Titane: brushed graphite, silver */
+    --bg: #15171a; --panel: #1e2125; --panel2: #2a2e33; --line: #3c4149; --text: #eef0f2; --muted: #a6adb6;
+    --accent: #d5dbe3; --on-accent: #14171a; --glow: #2b3038; --edge: rgba(255,255,255,.07);
+  }
+  [data-theme=light] { /* Clair: for bright sunlight */
     --bg: #fff; --panel: #f3f3f5; --panel2: #e7e7eb; --line: #d3d3da; --text: #0b0b0d; --muted: #5d5d66;
-    --accent: #0b0b0d; --on-accent: #fff;
+    --accent: #0b0b0d; --on-accent: #fff; --glow: transparent; --edge: rgba(0,0,0,.04);
     --prep: #946200; --work: #d42b1e; --rest: #12813a; --setrest: #1d5fd1;
     --blockrest: #0b7285; --cool: #6d3fd6; --amrap: #b84a00; --fortime: #c2185b;
+  }
+  [data-theme=sable] { /* Sable: warm paper, ink navy */
+    --bg: #f3ede2; --panel: #e9e1d2; --panel2: #ddd3c0; --line: #c8bba3; --text: #1c1913; --muted: #5c5547;
+    --accent: #1c2a4a; --on-accent: #f6f1e7; --glow: #fffaf0; --edge: rgba(60,40,0,.07);
+    --prep: #7a5000; --work: #bf2418; --rest: #0e6a2f; --setrest: #1a50b4;
+    --blockrest: #095f6f; --cool: #5c33bd; --amrap: #9c3e00; --fortime: #a5144e;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html { overscroll-behavior-y: none; -webkit-text-size-adjust: 100%; }
   html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 16px; line-height: 1.35; }
-  body { display: flex; justify-content: center; }
+  body { display: flex; justify-content: center; background: radial-gradient(130% 46% at 50% -8%, var(--glow), transparent 72%) var(--bg) no-repeat; }
   #app { width: 100%; max-width: 520px; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
   button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; touch-action: manipulation; padding: 0;
     -webkit-user-select: none; user-select: none; }
@@ -59,7 +92,8 @@
   main { flex: 1; padding: 6px 20px calc(var(--tabs-h) + 40px); }
   h2 { font-family: var(--display); font-size: 24px; line-height: 1.1; margin: 30px 0 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   h2 .btn { font-family: system-ui, sans-serif; }
-  h2 .sub { font-family: system-ui, sans-serif; font-size: 13px; font-weight: 400; color: var(--muted); }
+  h2 .sub, h1 .sub { font-family: system-ui, sans-serif; font-size: 13px; font-weight: 400; color: var(--muted); }
+  h1 .sub { font-size: 15px; margin-left: 4px; }
 
   nav.tabs { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 520px; height: var(--tabs-h); display: flex;
     background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
@@ -75,6 +109,8 @@
   .btn.ghost { background: none; color: var(--muted); font-weight: 500; }
   .btn-row { display: flex; gap: 10px; margin-top: 14px; }
   .btn-row .btn { flex: 1; }
+
+  .section, .stat, .hist, .resume, .qstep, .templates button, .sheet { box-shadow: inset 0 0 0 1px var(--edge); }
 
   /* Steppers */
   .tstep { display: flex; align-items: stretch; background: var(--panel2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
@@ -186,6 +222,17 @@
   .switch input:checked + span::before { transform: translateX(20px); background: var(--on-accent); }
   .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
   input[type=range] { padding: 0; accent-color: var(--accent); background: none; border: none; }
+
+  .themes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 6px; padding: 14px 0 12px; }
+  .theme-tile { display: flex; flex-direction: column; gap: 5px; text-align: center; font-size: 13px; color: var(--muted); }
+  .theme-tile[aria-pressed=true] { color: var(--text); font-weight: 600; }
+  .tt-ring { display: block; padding: 3px; border: 2px solid transparent; border-radius: 18px; }
+  .theme-tile[aria-pressed=true] .tt-ring { border-color: var(--text); }
+  .tt-prev { display: flex; flex-direction: column; justify-content: center; gap: 6px; aspect-ratio: 1 / 1.08; border-radius: 13px; padding: 8px 9px; text-align: left;
+    background: radial-gradient(130% 70% at 50% 0%, var(--glow), transparent 75%) var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .tt-prev b { font-family: var(--display); font-size: 26px; line-height: .9; color: var(--work); font-variant-numeric: tabular-nums; }
+  .tt-prev i { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--rest) 62%, var(--panel2) 62%); }
+  .tt-prev em { height: 13px; width: 64%; border-radius: 7px; background: var(--accent); }
 
   /* Progression */
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -308,7 +355,9 @@
   .toast:not(:has(button)) { padding-right: 20px; }
 
   /* ===== Run screen: the scoreboard ===== */
-  #run { position: fixed; inset: 0; z-index: 20; background: var(--bg); color: var(--text); user-select: none; -webkit-user-select: none; touch-action: manipulation;
+  #run { position: fixed; inset: 0; z-index: 20; color: var(--text);
+    background: radial-gradient(95% 52% at 50% 40%, color-mix(in srgb, var(--phase) 12%, transparent), transparent 72%) var(--bg); /* faint halo of the phase colour behind the digits */
+    user-select: none; -webkit-user-select: none; touch-action: manipulation;
     display: flex; justify-content: center; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
   #run::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: calc(8px + env(safe-area-inset-top)); background: var(--phase); z-index: 1; }
   #run .wash { position: absolute; inset: 0; background: var(--phase); opacity: 0; pointer-events: none; }
@@ -332,6 +381,7 @@
   #run .exercise { font-size: 26px; font-weight: 600; line-height: 1.15; margin-top: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   #run .exnote { color: var(--muted); font-size: 16px; margin-top: 2px; min-height: 22px; }
   #run .paused-tag { color: var(--muted); font-size: 15px; margin-top: 8px; }
+  #run.paused { background: var(--bg); }
   #run.paused .big, #run.paused .phase-label { color: var(--muted); }
   #run.paused .phasebar div, #run.paused::before { background: var(--muted); }
   #run.lastsec .big { animation: blink 1s steps(2, jump-none) infinite; }
@@ -472,13 +522,21 @@
           <button class="btn primary" id="quick-start"><svg class="ic"><use href="#i-play"/></svg>Démarrer</button>
         </div>
       </div>
+    </main>
+  </section>
 
-      <h2>Modèles</h2>
-      <div class="templates" id="templates"></div>
-
-      <h2 style="align-items:center"><span>Mes séances <span class="sub" id="count"></span></span><button class="btn small" id="btn-new"><svg class="ic"><use href="#i-plus"/></svg>Nouvelle</button></h2>
+  <!-- ========== MY WORKOUTS ========== -->
+  <section id="view-list" class="hidden">
+    <header>
+      <h1>Mes séances <span class="sub" id="count"></span></h1>
+      <button class="btn small primary" id="btn-new"><svg class="ic"><use href="#i-plus"/></svg>Nouvelle</button>
+    </header>
+    <main>
       <input class="search hidden" id="search" type="search" placeholder="Rechercher une séance" aria-label="Rechercher une séance">
       <div id="profile-list"></div>
+
+      <h2>Modèles <span class="sub">prêts à lancer ou à personnaliser</span></h2>
+      <div class="templates" id="templates"></div>
     </main>
   </section>
 
@@ -571,6 +629,12 @@
   <section id="view-settings" class="hidden">
     <header><h1>Réglages</h1></header>
     <main>
+      <h2>Thème</h2>
+      <div class="section" style="padding:2px 12px">
+        <div class="themes" id="themes"></div>
+      </div>
+      <p class="hint">Les thèmes Clair et Sable se lisent mieux en plein soleil.</p>
+
       <h2>Sons et voix</h2>
       <div class="section" style="padding:2px 16px">
         <label class="setting"><span><b>Bips de changement de phase</b><small>Son distinct pour effort et repos</small></span><span class="switch"><input type="checkbox" data-s="beeps"><span></span></span></label>
@@ -600,12 +664,6 @@
           <select data-s="display" aria-label="Temps affiché"><option value="remaining">Restant</option><option value="elapsed">Écoulé</option></select></div>
       </div>
 
-      <h2>Apparence</h2>
-      <div class="section" style="padding:2px 16px">
-        <div class="setting"><span><b>Thème</b><small>Le thème clair se lit mieux en plein soleil</small></span>
-          <select data-s="theme" aria-label="Thème"><option value="dark">Noir</option><option value="light">Clair</option></select></div>
-      </div>
-
       <h2>Données</h2>
       <div class="btn-row">
         <button class="btn" id="export"><svg class="ic"><use href="#i-download"/></svg>Sauvegarder</button>
@@ -617,7 +675,8 @@
   </section>
 
   <nav class="tabs" id="tabs">
-    <button data-v="home" class="active"><svg class="ic"><use href="#i-timer"/></svg>Séances</button>
+    <button data-v="home" class="active"><svg class="ic"><use href="#i-timer"/></svg>Minuteur</button>
+    <button data-v="list"><svg class="ic"><use href="#i-list"/></svg>Mes séances</button>
     <button data-v="history"><svg class="ic"><use href="#i-chart"/></svg>Progression</button>
     <button data-v="settings"><svg class="ic"><use href="#i-settings"/></svg>Réglages</button>
   </nav>
@@ -746,7 +805,6 @@ const store = {
 const DEFAULT_SETTINGS = { beeps: true, cdLen: '3', voice: true, preannounce: true, tenSec: true, halfway: false, vibrate: true,
   volume: 0.8, sound: 'beep', rate: '1.05', wakelock: true, background: false, tapPause: true, swipe: true, waitTap: false, display: 'remaining', theme: 'dark' };
 let settings = { ...DEFAULT_SETTINGS, ...store.get('settings', {}) };
-if (settings.theme !== 'light') settings.theme = 'dark';
 let quick = { work: 30, rest: 15, rounds: 8, prep: 10, ...store.get('quick', {}) };
 
 const newBlock = (type = 'interval') => ({
@@ -1002,19 +1060,26 @@ function bindStep(el, get, set) {
 let currentView = 'home';
 function show(view) {
   currentView = view;
-  ['home', 'edit', 'history', 'settings'].forEach(v => $('#view-' + v).classList.toggle('hidden', v !== view));
+  ['home', 'list', 'edit', 'history', 'settings'].forEach(v => $('#view-' + v).classList.toggle('hidden', v !== view));
   $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.v === view));
   $('#tabs').classList.toggle('hidden', view === 'edit');
-  ({ home: renderHome, history: renderHistory, settings: renderSettings })[view]?.();
+  ({ home: renderHome, list: renderHome, history: renderHistory, settings: renderSettings })[view]?.();
   a11y(); window.scrollTo(0, 0);
 }
 $$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
+const THEMES = [['dark', 'Noir', '#000000'], ['minuit', 'Minuit', '#060a18'], ['or', 'Or noir', '#0b0a08'], ['sapin', 'Sapin', '#05130e'],
+  ['bordeaux', 'Bordeaux', '#14060a'], ['titane', 'Titane', '#15171a'], ['light', 'Clair', '#ffffff'], ['sable', 'Sable', '#f3ede2']];
 function applyTheme() {
-  const t = settings.theme === 'light' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#ffffff' : '#000000';
+  const t = THEMES.find(x => x[0] === settings.theme) || THEMES[0];
+  settings.theme = t[0]; document.documentElement.dataset.theme = t[0];
+  document.querySelector('meta[name=theme-color]').content = t[2];
 }
-matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', applyTheme);
+/* Theme picker: each tile is a miniature drawn with that theme's own colours. */
+function renderThemes() {
+  $('#themes').innerHTML = THEMES.map(([id, name]) => `<button class="theme-tile" data-pick="${id}" aria-pressed="${id === settings.theme}" title="Thème ${name}">
+    <span class="tt-ring"><span class="tt-prev" data-theme="${id}"><b>0:30</b><i></i><em></em></span></span>${name}</button>`).join('');
+  $$('#themes .theme-tile').forEach(b => b.onclick = () => { settings.theme = b.dataset.pick; store.set('settings', settings); applyTheme(); renderThemes(); });
+}
 
 /* ================= Home ================= */
 const quickWorkout = () => ({ ...newWorkout(), id: 'quick', name: 'Minuteur rapide', color: '#ff6b35', prep: quick.prep,
@@ -1063,7 +1128,7 @@ function renderList() {
   const list = profiles.filter(p => !q || (p.name + ' ' + describe(p) + ' ' + p.blocks.flatMap(b => b.exercises.map(e => e.name)).join(' ')).toLowerCase().includes(q))
     .sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
   $('#count').textContent = profiles.length || '';
-  if (!profiles.length) { $('#profile-list').innerHTML = `<div class="empty">Aucune séance enregistrée.<br>Touchez « Nouvelle » ou partez d'un modèle ci-dessus.</div>`; return; }
+  if (!profiles.length) { $('#profile-list').innerHTML = `<div class="empty">Aucune séance enregistrée.<br>Touchez « Nouvelle » ou partez d'un modèle ci-dessous.</div>`; return; }
   if (!list.length) { $('#profile-list').innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
   $('#profile-list').innerHTML = list.map(p => `<div class="card" style="--c:${p.color}" data-id="${p.id}">
     <div class="info" role="button" tabindex="0" aria-label="Voir ${esc(p.name || 'la séance')}"><div class="name">${esc(p.name || 'Sans nom')}</div><div class="meta">${fmtTot(p)} · ${esc(describe(p))}</div><div class="bar">${timelineHTML(p)}</div></div>
@@ -1187,7 +1252,7 @@ function checkHash() {
     sheet(`<h4>Séance partagée</h4><p>On vous a envoyé « ${esc(w.name)} » (${fmtTot(w)}).</p><p>${esc(describe(w))}</p>
       <div class="btn-row"><button class="btn" data-a="no">Ignorer</button><button class="btn primary" data-a="ok">Ajouter</button></div>`, (el, close) => {
       el.querySelector('[data-a=no]').onclick = close;
-      el.querySelector('[data-a=ok]').onclick = () => { close(); profiles.unshift(w); saveProfiles(); renderHome(); toast('Séance ajoutée'); };
+      el.querySelector('[data-a=ok]').onclick = () => { close(); profiles.unshift(w); saveProfiles(); show('list'); toast('Séance ajoutée'); };
     });
   } catch { toast('Lien de séance invalide'); }
 }
@@ -1195,7 +1260,9 @@ const history_replace = () => { try { window.history.replaceState(null, '', loca
 
 /* ================= Editor ================= */
 let draft = null, draftIsNew = false, draftDirty = false;
+let editFrom = 'list';
 function openEditor(p, isNew = false) {
+  if (currentView !== 'edit') editFrom = currentView;
   draft = migrate(clone(p)); draftIsNew = isNew || !profiles.some(x => x.id === p.id); draftDirty = isNew;
   if (draftIsNew && profiles.some(x => x.id === draft.id)) draft.id = uid();
   $('#edit-title').textContent = draftIsNew ? 'Création' : 'Modification';
@@ -1308,10 +1375,10 @@ function saveDraft() {
   if (i >= 0) profiles[i] = clone(draft); else profiles.unshift(clone(draft));
   saveProfiles(); draftDirty = false; toast('Séance enregistrée'); return true;
 }
-$('#edit-save').onclick = () => { if (saveDraft()) show('home'); };
+$('#edit-save').onclick = () => { if (saveDraft()) show('list'); };
 $('#edit-back').onclick = () => draftDirty
-  ? confirmSheet('Quitter sans enregistrer ?', 'Les modifications seront perdues.', 'Quitter', () => show('home'))
-  : show('home');
+  ? confirmSheet('Quitter sans enregistrer ?', 'Les modifications seront perdues.', 'Quitter', () => show(editFrom))
+  : show(editFrom);
 $('#edit-start').onclick = () => { if (totalOf(draft) > 0) startRun(clone(draft), true); };
 $('#edit-preview').onclick = () => stepsSheet(draft, buildPhases(draft), -1);
 
@@ -1806,7 +1873,7 @@ function workoutSheet(hs) { // hs: newest first
 $('#hist-clear').onclick = () => confirmSheet("Effacer tout l'historique ?", `Les ${history.length} séances enregistrées seront supprimées. Pensez à faire une sauvegarde dans Réglages.`, 'Tout effacer', () => { history = []; saveHistory(); renderHistory(); });
 
 /* ================= Settings ================= */
-function renderSettings() { $$('[data-s]').forEach(i => { const k = i.dataset.s; if (i.type === 'checkbox') i.checked = !!settings[k]; else i.value = String(settings[k]); }); }
+function renderSettings() { $$('[data-s]').forEach(i => { const k = i.dataset.s; if (i.type === 'checkbox') i.checked = !!settings[k]; else i.value = String(settings[k]); }); renderThemes(); }
 $$('[data-s]').forEach(i => i.addEventListener(i.type === 'range' ? 'input' : 'change', () => {
   const k = i.dataset.s; settings[k] = i.type === 'checkbox' ? i.checked : i.type === 'range' ? +i.value : i.value;
   store.set('settings', settings);
