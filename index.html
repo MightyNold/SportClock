@@ -670,6 +670,7 @@
         <button class="btn" id="import"><svg class="ic"><use href="#i-upload"/></svg>Restaurer</button>
       </div>
       <input type="file" id="import-file" accept="application/json,.json" class="hidden">
+      <p class="hint">La sauvegarde contient vos séances, votre historique, vos réglages et les valeurs du minuteur rapide. Les modèles font partie de l'appli : ils sont toujours disponibles.<br>« Restaurer » ajoute ce qui manque sans rien effacer, et reprend les réglages du fichier.</p>
       <p class="hint" style="text-align:center;margin-top:20px">Au clavier pendant une séance : Espace pour la pause, flèches pour changer de phase, T pour +1 tour, + et − pour 10 s, Échap pour arrêter.</p>
     </main>
   </section>
@@ -804,7 +805,17 @@ const store = {
 };
 const DEFAULT_SETTINGS = { beeps: true, cdLen: '3', voice: true, preannounce: true, tenSec: true, halfway: false, vibrate: true,
   volume: 0.8, sound: 'beep', rate: '1.05', wakelock: true, background: false, tapPause: true, swipe: true, waitTap: false, display: 'remaining', theme: 'dark' };
-let settings = { ...DEFAULT_SETTINGS, ...store.get('settings', {}) };
+const SETTING_CHOICES = { cdLen: ['0', '3', '5', '10'], sound: ['beep', 'whistle', 'bell', 'boxing'], rate: ['0.9', '1.05', '1.25'], display: ['remaining', 'elapsed'],
+  theme: ['dark', 'minuit', 'or', 'sapin', 'bordeaux', 'titane', 'light', 'sable'] };
+function cleanSettings(o, base = DEFAULT_SETTINGS) { // invalid or missing values keep the base value
+  const out = { ...base }; if (!o || typeof o !== 'object') return out;
+  for (const k of Object.keys(DEFAULT_SETTINGS)) { const v = o[k], d = DEFAULT_SETTINGS[k];
+    if (SETTING_CHOICES[k]) { if (SETTING_CHOICES[k].includes(String(v))) out[k] = String(v); }
+    else if (typeof d === 'boolean') { if (typeof v === 'boolean') out[k] = v; }
+    else if (typeof d === 'number' && v !== null && v !== '' && Number.isFinite(+v)) out[k] = clamp(+v, 0, 1); }
+  return out;
+}
+let settings = cleanSettings(store.get('settings', {}));
 let quick = { work: 30, rest: 15, rounds: 8, prep: 10, ...store.get('quick', {}) };
 
 const newBlock = (type = 'interval') => ({
@@ -1884,20 +1895,36 @@ $$('[data-s]').forEach(i => i.addEventListener(i.type === 'range' ? 'input' : 'c
 }));
 $('#test-sound').onclick = () => { audio(); const S = snd(); [0, 1, 2].forEach(i => setTimeout(S.tick, i * 1000)); setTimeout(() => S.go('work'), 3000); setTimeout(() => say('Pompes. Dernier tour !', true), 3500); };
 $('#export').onclick = () => {
-  const blob = new Blob([JSON.stringify({ app: 'SportClock', version: 2, profiles, settings, history }, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'SportClock', version: 3, date: new Date().toISOString(), profiles, history, settings, quick }, null, 2)], { type: 'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `sportclock-${new Date().toISOString().slice(0, 10)}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 $('#import').onclick = () => $('#import-file').click();
+/* Restore = merge: nothing is deleted, identical workouts and known history entries are skipped. */
+const workoutSig = w => { const { id, fav, ...rest } = migrate(w); return JSON.stringify({ ...rest, blocks: rest.blocks.map(({ id, ...b }) => b) }); };
+function restoreBackup(data) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.profiles)) throw new Error('format');
+  const sigs = new Set(profiles.map(workoutSig)), ids = new Set(profiles.map(p => p.id)); let nw = 0, nh = 0;
+  data.profiles.slice(0, 500).forEach(raw => { const w = migrate(raw), sg = workoutSig(w);
+    if (sigs.has(sg)) return; // already there, identical
+    if (ids.has(w.id)) w.id = uid(); // same workout edited since: keep both versions
+    sigs.add(sg); ids.add(w.id); profiles.push(w); nw++; });
+  if (Array.isArray(data.history)) { const hid = new Set(history.map(h => h.id));
+    const add = data.history.slice(0, 3000).map(cleanHist).filter(h => !hid.has(h.id)); nh = add.length;
+    history = [...history, ...add].sort((x, y) => y.date - x.date).slice(0, 3000); }
+  const hasSet = data.settings && typeof data.settings === 'object', hasQuick = data.quick && typeof data.quick === 'object';
+  if (hasSet) { settings = cleanSettings(data.settings, settings); store.set('settings', settings); }
+  if (hasQuick) { ['work', 'rest', 'rounds', 'prep'].forEach(k => { if (Number.isFinite(+data.quick[k])) quick[k] = +data.quick[k]; }); showQuick(); store.set('quick', quick); }
+  saveProfiles(); saveHistory(); applyTheme(); show(currentView);
+  return { nw, nh, hasSet: !!(hasSet || hasQuick) };
+}
 $('#import-file').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   try {
-    const data = JSON.parse(await f.text()); if (!Array.isArray(data.profiles)) throw 0;
-    const ids = new Set(profiles.map(p => p.id));
-    data.profiles.forEach(p => { p = migrate(p); if (ids.has(p.id)) p.id = uid(); profiles.push(p); });
-    if (Array.isArray(data.history)) { const hid = new Set(history.map(h => h.id)); history = [...history, ...data.history.map(cleanHist).filter(h => !hid.has(h.id))].sort((a, b) => b.date - a.date); saveHistory(); }
-    saveProfiles(); toast(`${data.profiles.length} séance(s) importée(s)`);
-  } catch { toast('Fichier invalide'); }
+    const r = restoreBackup(JSON.parse(await f.text()));
+    const parts = [r.nw ? `${r.nw} séance${r.nw > 1 ? 's' : ''}` : '', r.nh ? `${r.nh} entrée${r.nh > 1 ? 's' : ''} d'historique` : '', r.hasSet ? 'réglages' : ''].filter(Boolean);
+    toast(r.nw || r.nh ? `Restauré : ${parts.join(', ')}` : r.hasSet ? 'Réglages restaurés, séances déjà à jour' : 'Tout était déjà à jour');
+  } catch { toast("Ce fichier n'est pas une sauvegarde SportClock"); }
   e.target.value = '';
 };
 
