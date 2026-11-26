@@ -93,12 +93,21 @@
   .resume b { display: block; font-family: var(--display); font-size: 28px; line-height: 1.1; margin: 2px 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .resume .go { width: 58px; height: 58px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; font-size: 22px; flex-shrink: 0; }
   .quick .fld > label { text-align: center; margin-bottom: 8px; }
-  .quick .tstep { flex-direction: column-reverse; background: var(--panel); border: none; border-radius: var(--radius); }
-  .quick .tstep button { width: 100%; height: 46px; color: var(--muted); }
-  .quick .tstep input { font-size: 46px; padding: 0; }
-  .quick .tstep[data-q=work] input { color: var(--work); }
-  .quick .tstep[data-q=rest] input { color: var(--rest); }
-  .quick .summary { color: var(--muted); font-size: 14px; margin: 12px 0 0; text-align: center; }
+  .qstep { display: flex; flex-direction: column; background: var(--panel); border-radius: var(--radius); overflow: hidden; }
+  .qstep button { min-height: 40px; color: var(--muted); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .qstep button:active { background: var(--line); color: var(--text); }
+  .qstep input { border: none; background: none; text-align: center; font-family: var(--display); font-size: 46px; line-height: 1; padding: 2px 0; min-width: 0; border-radius: 0; font-variant-numeric: tabular-nums; }
+  .qstep[data-q=work] input { color: var(--work); }
+  .qstep[data-q=rest] input { color: var(--rest); }
+  .qstep.row { flex-direction: row; align-items: stretch; width: 214px; flex-shrink: 0; }
+  .qstep.row button { padding: 0 12px; min-height: 48px; }
+  .qstep.row input { font-size: 26px; flex: 1; width: 60px; }
+  .qprep { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .quick .qprep > label { flex: 1; margin: 0; font-size: 16px; color: var(--text); text-align: left; }
+  .qprep > label small { display: block; color: var(--muted); }
+  .quick .setting { border: none; padding-bottom: 0; }
+  .quick .summary { color: var(--muted); font-size: 15px; margin: 14px 0 0; text-align: center; white-space: pre-line; line-height: 1.5; }
+  .quick .summary b { color: var(--text); font-weight: 600; }
   .quick #quick-start { flex: 2; min-height: 56px; font-size: 17px; }
   .templates { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 0 20px 4px; }
   .templates::-webkit-scrollbar { display: none; }
@@ -334,8 +343,8 @@
   #run .lapbtn { flex: 1; min-height: 52px; border-radius: 14px; background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; }
   #run .lapbtn:active { transform: scale(.97); }
   #run .lapundo { width: 52px; height: 52px; border-radius: 14px; background: var(--panel2); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
-  #run .chips { display: flex; gap: 10px; flex: 1; }
-  #run .chips button { flex: 1; min-height: 46px; border-radius: 12px; background: var(--panel); color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+  #run .chips { display: flex; gap: 8px; flex: 1; }
+  #run .chips button { flex: 1; min-height: 46px; border-radius: 12px; background: var(--panel); color: var(--muted); font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #run .progress { height: 4px; background: var(--panel2); border-radius: 2px; overflow: hidden; margin: 14px 0 6px; }
   #run .progress div { height: 100%; background: var(--text); width: 0; }
   #run .times { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -370,6 +379,16 @@
     #run .progress { margin-top: 10px; } #run .tools { margin-top: 4px; } #run .tools button span { display: none; } #run .tools button { min-height: 40px; }
   }
 
+  /* End-of-phase alarm: the whole screen blinks until it is touched */
+  #run-alarm { position: absolute; inset: 0; z-index: 5; background: var(--phase); color: var(--bg); display: flex; flex-direction: column; justify-content: center;
+    padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); cursor: pointer; animation: alarm 1s steps(2, jump-none) infinite; }
+  @keyframes alarm { 0% { background: var(--phase); color: var(--bg); } 100% { background: var(--bg); color: var(--phase); } }
+  #run-alarm > * { width: 100%; max-width: 472px; margin-left: auto; margin-right: auto; }
+  #run-alarm .a-title { font-family: var(--display); font-size: 46px; line-height: 1.05; }
+  #run-alarm .a-over { font-family: var(--display); font-size: min(40vw, 26vh, 210px); line-height: .9; font-variant-numeric: tabular-nums; margin: 6px 0 14px; }
+  #run-alarm .a-cta { font-size: 22px; font-weight: 700; line-height: 1.25; }
+  #run-alarm .a-next { font-size: 17px; margin-top: 6px; }
+  #run-alarm .a-stop { margin-top: 36px; min-height: 48px; text-align: left; text-decoration: underline; font-size: 16px; }
   #done { position: absolute; inset: 0; z-index: 4; background: var(--bg); display: flex; flex-direction: column; justify-content: center; padding: calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); overflow-y: auto; }
   #done > * { width: 100%; max-width: 472px; margin-left: auto; margin-right: auto; }
   #done .kicker { color: var(--rest); font-family: var(--display); font-size: 34px; line-height: 1.05; display: flex; align-items: center; gap: 10px; }
@@ -434,10 +453,19 @@
       <h2>Minuteur rapide</h2>
       <div class="quick">
         <div class="grid3">
-          <div class="fld"><label>Effort</label><div class="tstep" data-q="work" data-kind="time"><button data-d="-1">−</button><input inputmode="numeric"><button data-d="1">+</button></div></div>
-          <div class="fld"><label>Repos</label><div class="tstep" data-q="rest" data-kind="time"><button data-d="-1">−</button><input inputmode="numeric"><button data-d="1">+</button></div></div>
-          <div class="fld"><label>Tours</label><div class="tstep" data-q="rounds" data-kind="num"><button data-d="-1">−</button><input inputmode="numeric"><button data-d="1">+</button></div></div>
+          <div class="fld"><label>Effort</label><div class="qstep" data-q="work">
+            <button data-d="60">+ 1 min</button><button data-d="5">+ 5 s</button><input inputmode="numeric" aria-label="Durée de l'effort">
+            <button data-d="-5">− 5 s</button><button data-d="-60">− 1 min</button></div></div>
+          <div class="fld"><label>Repos</label><div class="qstep" data-q="rest">
+            <button data-d="60">+ 1 min</button><button data-d="5">+ 5 s</button><input inputmode="numeric" aria-label="Durée du repos">
+            <button data-d="-5">− 5 s</button><button data-d="-60">− 1 min</button></div></div>
+          <div class="fld"><label>Tours</label><div class="qstep" data-q="rounds">
+            <button data-d="5">+ 5</button><button data-d="1">+ 1</button><input inputmode="numeric" aria-label="Nombre de tours">
+            <button data-d="-1">− 1</button><button data-d="-5">− 5</button></div></div>
         </div>
+        <div class="fld qprep"><label for="quick-prep-in">Préparation<small id="quick-prep-hint"></small></label>
+          <div class="qstep row" data-q="prep"><button data-d="-5">− 5 s</button><input id="quick-prep-in" inputmode="numeric"><button data-d="5">+ 5 s</button></div></div>
+        <label class="setting"><span><b>Attendre mon appui entre les phases</b><small>À la fin de l'effort ou du repos, une alarme sonne en plein écran jusqu'à ce que vous touchiez l'écran.</small></span><span class="switch"><input type="checkbox" data-s="waitTap"><span></span></span></label>
         <p class="summary" id="quick-summary"></p>
         <div class="btn-row">
           <button class="btn" id="quick-save"><svg class="ic"><use href="#i-save"/></svg>Enregistrer</button>
@@ -563,6 +591,7 @@
 
       <h2>Pendant la séance</h2>
       <div class="section" style="padding:2px 16px">
+        <label class="setting"><span><b>Attendre mon appui entre les phases</b><small>À la fin de l'effort ou du repos, une alarme sonne en plein écran jusqu'à ce que vous touchiez l'écran. Sinon les phases s'enchaînent toutes seules.</small></span><span class="switch"><input type="checkbox" data-s="waitTap"><span></span></span></label>
         <label class="setting"><span><b>Garder l'écran allumé</b></span><span class="switch"><input type="checkbox" data-s="wakelock"><span></span></span></label>
         <label class="setting"><span><b>Toucher les chiffres pour mettre en pause</b></span><span class="switch"><input type="checkbox" data-s="tapPause"><span></span></span></label>
         <label class="setting"><span><b>Glisser pour changer de phase</b><small>Vers la gauche : phase suivante. Vers la droite : précédente.</small></span><span class="switch"><input type="checkbox" data-s="swipe"><span></span></span></label>
@@ -620,13 +649,15 @@
         </div>
         <button class="lapbtn hidden" id="run-setdone"><svg class="ic"><use href="#i-check"/></svg>Série terminée</button>
         <div class="chips" id="run-chips">
+          <button id="run-minus60">− 1 min</button>
           <button id="run-minus">− 10 s</button>
           <button id="run-plus">+ 10 s</button>
+          <button id="run-plus60">+ 1 min</button>
         </div>
       </div>
       <div class="meta">
         <div class="progress"><div id="run-prog"></div></div>
-        <div class="times"><span id="run-elapsed">0:00</span><span id="run-len">0:00</span></div>
+        <div class="times"><span id="run-elapsed">0:00</span><span id="run-end"></span><span id="run-len">0:00</span></div>
       </div>
       <div class="controls">
         <button id="run-prev" title="Phase précédente"><svg class="ic"><use href="#i-prev"/></svg></button>
@@ -640,6 +671,13 @@
         <button id="run-lock" title="Verrouiller l'écran"><svg class="ic"><use href="#i-unlock"/></svg><span>Verrou</span></button>
       </div>
     </div>
+  </div>
+  <div id="run-alarm" class="hidden" role="button" tabindex="0" aria-live="assertive">
+    <div class="a-title" id="alarm-title"></div>
+    <div class="a-over" id="alarm-over">+0:00</div>
+    <div class="a-cta">Touchez l'écran pour continuer</div>
+    <div class="a-next" id="alarm-next"></div>
+    <button class="a-stop" id="alarm-stop">Arrêter la séance</button>
   </div>
   <div class="lockhint hidden" id="run-lockhint">Appui long sur Verrou pour déverrouiller</div>
   <div id="done" class="hidden">
@@ -675,6 +713,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const ic = (n, c = '') => `<svg class="ic ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const setIc = (el, n) => { if (el.dataset.ic === n) return; el.dataset.ic = n; const u = el.querySelector('.ic use');
   if (u) u.setAttribute('href', '#i-' + n); else el.insertAdjacentHTML('afterbegin', ic(n)); };
+const endAt = secs => new Date(Date.now() + secs * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const getP = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
 const setP = (o, p, v) => { const ks = p.split('.'), l = ks.pop(); ks.reduce((a, k) => a[k], o)[l] = v; };
 const timeStep = (v, d) => d > 0 ? (v < 60 ? 5 : v < 300 ? 15 : 60) : (v <= 60 ? 5 : v <= 300 ? 15 : 60);
@@ -705,10 +744,10 @@ const store = {
   set(k, v) { try { localStorage.setItem('sc_' + k, JSON.stringify(v)); } catch {} },
 };
 const DEFAULT_SETTINGS = { beeps: true, cdLen: '3', voice: true, preannounce: true, tenSec: true, halfway: false, vibrate: true,
-  volume: 0.8, sound: 'beep', rate: '1.05', wakelock: true, background: false, tapPause: true, swipe: true, display: 'remaining', theme: 'dark' };
+  volume: 0.8, sound: 'beep', rate: '1.05', wakelock: true, background: false, tapPause: true, swipe: true, waitTap: false, display: 'remaining', theme: 'dark' };
 let settings = { ...DEFAULT_SETTINGS, ...store.get('settings', {}) };
 if (settings.theme !== 'light') settings.theme = 'dark';
-let quick = store.get('quick', { work: 30, rest: 15, rounds: 8 });
+let quick = { work: 30, rest: 15, rounds: 8, prep: 10, ...store.get('quick', {}) };
 
 const newBlock = (type = 'interval') => ({
   id: uid(), type, name: '',
@@ -978,20 +1017,38 @@ function applyTheme() {
 matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', applyTheme);
 
 /* ================= Home ================= */
-const quickWorkout = () => ({ ...newWorkout(), id: 'quick', name: 'Minuteur rapide', color: '#ff6b35',
+const quickWorkout = () => ({ ...newWorkout(), id: 'quick', name: 'Minuteur rapide', color: '#ff6b35', prep: quick.prep,
   blocks: [{ ...newBlock('interval'), work: quick.work, rest: quick.rest, rounds: quick.rounds }] });
-$$('.quick .tstep').forEach(el => bindStep(el, () => quick[el.dataset.q], v => {
-  quick[el.dataset.q] = el.dataset.q === 'work' ? Math.max(5, v) : el.dataset.q === 'rounds' ? Math.max(1, v) : v;
-  store.set('quick', quick); quickSummary(); }));
-const quickSummary = () => $('#quick-summary').textContent = `${quick.rounds} × (${fmtH(quick.work)} effort + ${fmtH(quick.rest)} repos) · total ${fmtTot(quickWorkout())}`;
+const QLIM = { work: [5, 7200], rest: [0, 7200], rounds: [1, 99], prep: [0, 300] };
+const setQuick = (k, v) => { quick[k] = clamp(Math.round(v) || 0, ...QLIM[k]); store.set('quick', quick); showQuick(); };
+function showQuick() {
+  Object.keys(QLIM).forEach(k => { quick[k] = clamp(Math.round(+quick[k]) || 0, ...QLIM[k]); });
+  $$('.qstep').forEach(el => { const k = el.dataset.q, i = el.querySelector('input'); if (document.activeElement === i) return;
+    i.value = k === 'rounds' ? quick[k] : k === 'prep' && !quick.prep ? 'Aucune' : fmt(quick[k]); });
+  $('#quick-prep-hint').textContent = quick.prep ? 'Compte à rebours avant le premier effort' : 'La séance démarre tout de suite';
+  const tot = totalOf(quickWorkout());
+  $('#quick-summary').innerHTML = `${quick.rounds} × (${fmtH(quick.work)} effort + ${fmtH(quick.rest)} repos)\nTotal <b>${fmt(tot)}</b>, fin à <b>${endAt(tot)}</b>${settings.waitTap ? ' au plus tôt' : ''}`;
+}
+/* A button that repeats while it is held down. */
+function holdable(b, once) { let rep = null;
+  b.onclick = () => { if (b._held) { b._held = false; return; } once(); };
+  b.onpointerdown = () => { rep = setTimeout(function r() { b._held = true; once(); rep = setTimeout(r, 90); }, 450); };
+  b.onpointerup = b.onpointerleave = b.onpointercancel = () => clearTimeout(rep);
+}
+$$('.qstep').forEach(el => { const k = el.dataset.q, inp = el.querySelector('input');
+  el.querySelectorAll('button').forEach(b => holdable(b, () => setQuick(k, quick[k] + +b.dataset.d)));
+  inp.onfocus = () => inp.select();
+  inp.onchange = () => { const v = k === 'rounds' ? parseInt(inp.value) : parseTime(inp.value); inp.blur(); if (!isNaN(v)) setQuick(k, v); else showQuick(); };
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
+});
+setInterval(() => { if (currentView === 'home' && !runState) showQuick(); }, 20000); // keeps the end time current
 $('#quick-start').onclick = () => startRun(quickWorkout());
 $('#quick-save').onclick = () => openEditor({ ...quickWorkout(), id: uid(), name: `Intervalles ${quick.work}/${quick.rest}` }, true);
 $('#btn-new').onclick = () => newSheet();
 $('#search').oninput = renderList;
 
 function renderHome() {
-  $$('.quick .tstep').forEach(el => { el.querySelector('input').value = el.dataset.kind === 'num' ? quick[el.dataset.q] : fmt(quick[el.dataset.q]); });
-  quickSummary();
+  renderSettings(); showQuick();
   const last = history.find(h => profiles.some(p => p.id === h.wid));
   const lw = last && profiles.find(p => p.id === last.wid);
   $('#resume').innerHTML = lw ? `<div class="resume" role="button" tabindex="0" style="--c:${lw.color}"><div class="t"><small>Reprendre · ${relDate(last.date)}</small><b>${esc(lw.name)}</b><small>${fmtTot(lw)} · ${esc(describe(lw))}</small></div><div class="go">${ic('play')}</div></div>` : '';
@@ -1029,7 +1086,7 @@ function preview(p, isTemplate = false) {
   const saved = profiles.some(x => x.id === p.id), past = history.filter(h => h.wid === p.id);
   const ft = past.filter(h => h.forTime).map(h => h.forTime), lp = Math.max(0, ...past.map(h => h.laps || 0));
   const rec = ft.length ? ` · record ${fmt(Math.min(...ft))}` : lp ? ` · record ${lp} tour${lp > 1 ? 's' : ''}` : '';
-  sheet(`<h4>${esc(p.name || 'Sans nom')}</h4><p>${fmtTot(p)} au total${p.repeat > 1 ? ` · répété ${p.repeat} fois` : ''}${past.length ? `<br>Faite ${past.length} fois · dernière fois ${relDate(past[0].date)}${rec}` : ''}</p>
+  sheet(`<h4>${esc(p.name || 'Sans nom')}</h4><p>${fmtTot(p)} au total, fin à ${endAt(totalOf(p))}${p.repeat > 1 ? ` · répété ${p.repeat} fois` : ''}${past.length ? `<br>Faite ${past.length} fois · dernière fois ${relDate(past[0].date)}${rec}` : ''}</p>
     <div class="timeline" style="height:10px">${timelineHTML(p)}</div>
     <div class="pv-blocks">
       ${p.prep ? `<div><span class="dot" style="background:var(--prep)"></span>Préparation <span>${fmtH(p.prep)}</span></div>` : ''}
@@ -1266,7 +1323,7 @@ function startRun(w, fromEditor = false, resume = null) {
   if (!phases.length) return;
   const s = runState = { w, phases, idx: 0, phaseStart: 0, pausedAt: 0, paused: false, done: false, fromEditor, laps: {}, lastSec: null, active: 0, snapAt: 0, startedAt: Date.now() };
   $('#run-title').textContent = w.name || 'Séance';
-  $('#done').classList.add('hidden');
+  $('#done').classList.add('hidden'); $('#run-alarm').classList.add('hidden');
   $('#run').classList.remove('hidden', 'locked');
   setIc($('#run-lock'), 'unlock');
   muted = false; setIc($('#run-mute'), 'sound');
@@ -1287,6 +1344,7 @@ const totalDur = () => runState.phases.reduce((a, x) => a + x.dur, 0);
 const repsText = q => q ? (/^\d+$/.test(q) ? `${q} répétitions` : q) : '';
 function enterPhase(i) {
   const s = runState;
+  if (s.alarm) { s.alarm = null; $('#run-alarm').classList.add('hidden'); }
   if (s.phaseStart) s.active += Math.min(elapsedIn(), s.phases[s.idx].dur); // real time actually done
   s.idx = i; s.phaseStart = Date.now(); if (s.paused) s.pausedAt = s.phaseStart;
   s.lastSec = null; s.half = false; s.said10 = false; s.pre = false;
@@ -1340,6 +1398,7 @@ function update() {
   // catch up if the page was suspended (screen off, app in background); an untimed set always waits for the user
   while (!ph.manual && el >= ph.dur) {
     if (s.idx + 1 >= s.phases.length) return finish();
+    if (settings.waitTap && ph.kind !== 'prep') return ring(el - ph.dur); // alarm, then wait for the user
     const over = el - ph.dur; enterPhase(s.idx + 1); s.phaseStart -= over * 1000; ph = s.phases[s.idx]; el = elapsedIn();
   }
   if (Date.now() - s.snapAt > 5000) saveSnap();
@@ -1360,6 +1419,27 @@ function update() {
   }
   render();
 }
+/* End-of-phase alarm (option "Attendre mon appui"): rings on the whole screen until the user touches it. */
+const ENDED = { work: 'Effort terminé', rest: 'Repos terminé', setrest: 'Repos terminé', blockrest: 'Récupération terminée', amrap: 'Temps écoulé', fortime: 'Temps écoulé' };
+function ring(over) {
+  const s = runState, ph = s.phases[s.idx], nx = s.phases[s.idx + 1];
+  if (!s.alarm) {
+    s.alarm = { n: -1 };
+    const title = ENDED[ph.kind] || 'Phase terminée';
+    $('#alarm-title').textContent = title;
+    $('#alarm-next').textContent = `Ensuite : ${nx.kind === 'work' && nx.ex ? nx.ex : nx.label || PHASE[nx.kind].label}${nx.manual ? '' : ', ' + fmt(nx.dur)}`;
+    $('#run-alarm').classList.remove('hidden');
+    render(); setTimeout(() => s === runState && s.alarm && say(title), 500);
+  }
+  const k = Math.floor(over / 1.4);
+  if (k !== s.alarm.n && over < 180) { s.alarm.n = k; // one burst every 1.4 s, for 3 minutes at most
+    if (settings.beeps) [0, .18, .36].forEach(w => tone(1560, .13, { type: 'square', vol: .9, when: w }));
+    buzz([250, 120, 250]); }
+  $('#alarm-over').textContent = '+' + fmt(Math.floor(over));
+}
+function ackAlarm() { const s = runState; if (s?.alarm && !s.done) enterPhase(s.idx + 1); }
+$('#run-alarm').onclick = ackAlarm;
+$('#alarm-stop').onclick = e => { e.stopPropagation(); stopRun(); };
 function loop() { update(); rafId = requestAnimationFrame(loop); }
 function render() {
   const s = runState, ph = s.phases[s.idx], P = PHASE[ph.kind], isReps = ph.btype === 'reps';
@@ -1392,6 +1472,7 @@ function render() {
   $('#run-prog').style.width = (100 * tEl / tot) + '%';
   $('#run-elapsed').textContent = fmt(tEl);
   $('#run-len').textContent = approx + '−' + fmt(tot - tEl);
+  const et = 'Fin à ' + endAt(tot - tEl); if (s.eTxt !== et) $('#run-end').textContent = s.eTxt = et;
   $('#run-paused').classList.toggle('hidden', !s.paused);
   setIc($('#run-toggle'), s.paused ? 'play' : 'pause'); $('#run').classList.toggle('paused', s.paused);
   $('#run-toggle').setAttribute('aria-label', s.paused ? 'Reprendre' : 'Pause');
@@ -1435,7 +1516,7 @@ function closeRun() {
   if (s?.hist) { const n = $('#done-note').value.trim(); if (n) { s.hist.note = n; saveHistory(); } }
   clearInterval(tickTimer); cancelAnimationFrame(rafId); unlockScreen(); bgStop(); clearSnap();
   if ('speechSynthesis' in window) speechSynthesis.cancel();
-  $('#run').classList.add('hidden'); $('#run-lockhint').classList.add('hidden');
+  $('#run').classList.add('hidden'); $('#run-lockhint').classList.add('hidden'); $('#run-alarm').classList.add('hidden');
   runState = null;
   if (currentView !== 'edit') show(currentView);
 }
@@ -1480,6 +1561,8 @@ $('#run-next-btn').onclick = () => jump(1);
 $('#run-setdone').onclick = () => jump(1);
 $('#run-prev').onclick = () => jump(-1);
 $('#run-plus').onclick = () => adjust(10);
+$('#run-plus60').onclick = () => adjust(60);
+$('#run-minus60').onclick = () => adjust(-60);
 $('#run-minus').onclick = () => adjust(-10);
 $('#run-lap').onclick = () => lap(1);
 $('#run-lapundo').onclick = () => lap(-1);
@@ -1502,6 +1585,7 @@ document.addEventListener('keydown', e => {
   if ((k === 'Enter' || k === ' ') && e.target.matches?.('[role=button]')) { e.preventDefault(); e.target.click(); return; }
   if (top) { if (k === 'Escape') top.dismiss(); return; }
   if (!runState || runState.done || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (runState.alarm) { if (k === 'Escape') stopRun(); else if (k === ' ' || k === 'Enter' || k === 'ArrowRight') { e.preventDefault(); ackAlarm(); } return; }
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
   else if (k === 'ArrowRight') jump(1); else if (k === 'ArrowLeft') jump(-1);
   else if (k === 'Escape') stopRun(); else if (k === 't' || k === 'T') lap(1);
@@ -1728,6 +1812,7 @@ $$('[data-s]').forEach(i => i.addEventListener(i.type === 'range' ? 'input' : 'c
   store.set('settings', settings);
   if (k === 'sound') { audio(); SOUNDS[settings.sound].go('work'); }
   if (k === 'theme') applyTheme();
+  if (k === 'waitTap') { renderSettings(); showQuick(); }
   if (k === 'rate') say('Effort : pompes', true);
 }));
 $('#test-sound').onclick = () => { audio(); const S = snd(); [0, 1, 2].forEach(i => setTimeout(S.tick, i * 1000)); setTimeout(() => S.go('work'), 3000); setTimeout(() => say('Pompes. Dernier tour !', true), 3500); };
