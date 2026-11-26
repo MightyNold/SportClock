@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>SportClock — Minuteur d'intervalles</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #222632; --line: #2c3140;
+    --text: #f2f4f8; --muted: #8b93a7; --accent: #ff6b35;
+    --prep: #e0a800; --work: #ef4444; --rest: #22a565; --setrest: #3d7fe0;
+    --blockrest: #0f9fb5; --cool: #8b5cf6; --amrap: #f97316; --fortime: #db2777;
+    --radius: 16px;
+  }
+  [data-theme=light] { --bg: #f3f4f7; --panel: #ffffff; --panel2: #eef0f4; --line: #dde1e8; --text: #15171c; --muted: #687085; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { display: flex; justify-content: center; }
+  #app { width: 100%; max-width: 520px; min-height: 100vh; display: flex; flex-direction: column; }
+  button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; }
+  input, select, textarea { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; width: 100%; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .hidden { display: none !important; }
+  small { font-size: 12px; }
+
+  header { display: flex; align-items: center; gap: 10px; padding: calc(14px + env(safe-area-inset-top)) 18px 8px; }
+  header h1 { font-size: 22px; margin: 0; flex: 1; letter-spacing: -.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header h1 span { color: var(--accent); }
+  .icon-btn { width: 42px; height: 42px; border-radius: 12px; background: var(--panel); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+  .icon-btn.accent { background: var(--accent); color: #fff; }
+  .icon-btn:active, .btn:active { transform: scale(.96); }
+  main { flex: 1; padding: 6px 18px 110px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 24px 0 10px; font-weight: 650;
+    display: flex; align-items: center; justify-content: space-between; }
+
+  nav.tabs { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 520px; display: flex;
+    background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom); z-index: 5; }
+  nav.tabs button { flex: 1; padding: 9px 0 11px; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  nav.tabs .ic { font-size: 20px; }
+  nav.tabs button.active { color: var(--accent); font-weight: 600; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 16px; border-radius: 12px; font-weight: 600; background: var(--panel2); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.danger { background: color-mix(in srgb, #ef4444 18%, var(--panel)); color: #ef4444; }
+  .btn.block { width: 100%; }
+  .btn.small { padding: 8px 12px; font-size: 14px; }
+  .btn-row { display: flex; gap: 10px; margin-top: 12px; }
+  .btn-row .btn { flex: 1; }
+
+  /* Steppers */
+  .tstep { display: flex; align-items: stretch; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .tstep button { width: 40px; font-size: 20px; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+  .tstep button:active { background: var(--line); }
+  .tstep input { border: none; background: none; text-align: center; font-weight: 700; font-size: 17px; padding: 9px 0; font-variant-numeric: tabular-nums; min-width: 0; border-radius: 0; }
+  .fld > label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 5px 2px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  /* Home */
+  .resume { display: flex; align-items: center; gap: 12px; background: linear-gradient(135deg, var(--c, var(--accent)), color-mix(in srgb, var(--c, var(--accent)) 60%, #000)); color: #fff;
+    border-radius: var(--radius); padding: 16px; cursor: pointer; }
+  .resume .t { flex: 1; min-width: 0; }
+  .resume small { opacity: .85; }
+  .resume b { display: block; font-size: 18px; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .resume .go { width: 52px; height: 52px; border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font-size: 20px; }
+  .quick { background: var(--panel); border-radius: var(--radius); padding: 14px; }
+  .quick .fld > label { text-align: center; text-transform: uppercase; letter-spacing: .6px; font-size: 11px; }
+  .quick .tstep button { width: 30px; }
+  .quick .summary { color: var(--muted); font-size: 13px; margin: 10px 0 0; text-align: center; }
+  .templates { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; margin: 0 -18px; padding: 0 18px 4px; }
+  .templates::-webkit-scrollbar { display: none; }
+  .templates button { flex-shrink: 0; background: var(--panel); border-radius: 14px; padding: 11px 14px; text-align: left; border-top: 3px solid var(--c); min-width: 120px; }
+  .templates b { display: block; font-size: 14px; }
+  .templates small { color: var(--muted); font-size: 11px; }
+  .search { margin-bottom: 10px; }
+
+  .card { background: var(--panel); border-radius: var(--radius); padding: 14px 12px 14px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; position: relative; overflow: hidden; }
+  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--c); }
+  .card .info { flex: 1; min-width: 0; cursor: pointer; }
+  .card .name { font-weight: 650; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .meta { color: var(--muted); font-size: 13px; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .bar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; margin-top: 8px; gap: 1px; }
+  .star { font-size: 20px; color: var(--muted); width: 32px; height: 40px; }
+  .star.on { color: #f5b700; }
+  .play { width: 48px; height: 48px; border-radius: 50%; background: var(--c); color: #fff; font-size: 18px; display: grid; place-items: center; flex-shrink: 0; }
+  .empty { text-align: center; color: var(--muted); padding: 28px 10px; line-height: 1.5; }
+
+  /* Editor */
+  .section { background: var(--panel); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+  .section > .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .section > .hd h3 { margin: 0; font-size: 15px; flex: 1; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .block { border-left: 4px solid var(--bc); }
+  .block .num { width: 26px; height: 26px; border-radius: 8px; background: var(--bc); color: #fff; font-weight: 700; font-size: 13px; display: grid; place-items: center; flex-shrink: 0; }
+  .block .bname { flex: 1; font-weight: 650; padding: 7px 10px; }
+  .seg { display: flex; background: var(--panel2); border-radius: 10px; padding: 3px; margin-bottom: 12px; }
+  .seg button { flex: 1; padding: 7px 2px; border-radius: 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .seg button.on { background: var(--panel); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .exs { margin-top: 14px; }
+  .exs .lbl { font-size: 12px; color: var(--muted); margin: 0 0 6px 2px; }
+  .ex { display: grid; grid-template-columns: 22px 1fr 62px 30px 30px; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .ex .n { color: var(--muted); font-size: 13px; text-align: right; }
+  .ex input { padding: 9px 8px; }
+  .ex .note { grid-column: 2 / 4; font-size: 13px; padding: 6px 8px; margin-top: -2px; }
+  .ex button { color: var(--muted); font-size: 16px; height: 36px; }
+  .ex.noDur { grid-template-columns: 22px 1fr 30px 30px; }
+  .ex.noDur .note { grid-column: 2 / 3; }
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+  .toggle-row b { font-size: 14px; font-weight: 600; display: block; }
+  .toggle-row small { color: var(--muted); }
+  .hint { font-size: 12px; color: var(--muted); margin: 6px 2px 0; line-height: 1.4; }
+  .colors { display: flex; gap: 10px; flex-wrap: wrap; }
+  .colors button { width: 30px; height: 30px; border-radius: 50%; border: 3px solid transparent; }
+  .colors button.sel { border-color: var(--text); }
+  .addblock { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .addblock button { background: var(--panel); border: 1px dashed var(--line); border-radius: 12px; padding: 12px 4px; font-size: 12px; color: var(--muted); }
+  .addblock button b { display: block; font-size: 18px; color: var(--text); margin-bottom: 2px; }
+  .total-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 520px; background: var(--panel);
+    border-top: 1px solid var(--line); padding: 10px 18px calc(10px + env(safe-area-inset-bottom)); z-index: 6; }
+  .total-bar .row { display: flex; align-items: center; gap: 10px; }
+  .total-bar .t { flex: 1; }
+  .total-bar b { font-size: 20px; font-variant-numeric: tabular-nums; }
+  .timeline { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 1px; margin-bottom: 8px; }
+  .timeline div { height: 100%; min-width: 1px; }
+
+  /* Settings */
+  .setting { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid var(--line); gap: 12px; }
+  .setting:last-child { border-bottom: none; }
+  .setting b { display: block; font-weight: 600; font-size: 15px; }
+  .setting small { color: var(--muted); }
+  .setting select { width: auto; padding: 8px 10px; }
+  .switch { position: relative; width: 50px; height: 30px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch span { position: absolute; inset: 0; background: var(--line); border-radius: 30px; transition: .2s; cursor: pointer; }
+  .switch span::before { content: ""; position: absolute; width: 24px; height: 24px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .switch input:checked + span { background: var(--accent); }
+  .switch input:checked + span::before { transform: translateX(20px); }
+  input[type=range] { padding: 0; accent-color: var(--accent); background: none; border: none; }
+
+  /* History */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .stat { background: var(--panel); border-radius: 14px; padding: 12px 4px; text-align: center; }
+  .stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .stat small { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; }
+  .heat { background: var(--panel); border-radius: 14px; padding: 12px; margin-top: 10px; }
+  .heat .g { display: grid; grid-template-rows: repeat(7, 1fr); grid-auto-flow: column; gap: 3px; }
+  .heat .g i { aspect-ratio: 1; border-radius: 3px; background: var(--panel2); }
+  .heat .lg { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 6px; }
+  .hist { background: var(--panel); border-radius: 12px; padding: 12px 12px 12px 14px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; border-left: 4px solid var(--c); }
+  .hist .t { flex: 1; min-width: 0; }
+  .hist .d { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .hist .nt { font-size: 13px; margin-top: 4px; font-style: italic; color: var(--muted); }
+  .badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+  .badge.ok { background: color-mix(in srgb, var(--rest) 20%, transparent); color: var(--rest); }
+  .badge.part { background: color-mix(in srgb, var(--prep) 20%, transparent); color: var(--prep); }
+
+  /* Sheets */
+  .sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 40; display: flex; align-items: flex-end; justify-content: center; animation: fade .15s; }
+  .sheet { background: var(--panel); color: var(--text); width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; border-radius: 20px 20px 0 0;
+    padding: 8px 16px calc(16px + env(safe-area-inset-bottom)); animation: up .2s ease-out; }
+  @keyframes up { from { transform: translateY(40px); opacity: .5; } }
+  @keyframes fade { from { opacity: 0; } }
+  .sheet .grab { width: 40px; height: 4px; background: var(--line); border-radius: 2px; margin: 4px auto 12px; }
+  .sheet h4 { margin: 0 0 4px; font-size: 19px; }
+  .sheet p { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
+  .sheet .item { display: flex; gap: 12px; align-items: center; width: 100%; padding: 13px 8px; border-radius: 10px; text-align: left; font-size: 16px; }
+  .sheet .item:active { background: var(--panel2); }
+  .sheet .item.red { color: #ef4444; }
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .steps li { display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+  .steps li.cur { background: var(--panel2); font-weight: 700; }
+  .steps li.past { opacity: .45; }
+  .steps li .k { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .steps li .tm { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .steps li.bh { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); cursor: default; padding: 12px 8px 4px; }
+  .pv-blocks { margin: 12px 0; }
+  .pv-blocks div { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .pv-blocks div:last-child { border: none; }
+  .pv-blocks span { color: var(--muted); }
+
+  .toast { position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 8px 10px 18px; border-radius: 30px;
+    font-weight: 600; z-index: 60; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.4); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .toast button { color: var(--accent); font-weight: 700; padding: 0 10px; }
+  .toast:not(:has(button)) { padding-right: 18px; }
+
+  /* ===== Run screen ===== */
+  #run { position: fixed; inset: 0; z-index: 20; background: var(--phase); transition: background-color .35s; color: #fff; user-select: none; -webkit-user-select: none;
+    display: flex; justify-content: center; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #run .inner { width: 100%; max-width: 520px; display: grid; grid-template-rows: auto auto 1fr auto auto; padding: 12px 18px 18px; }
+  #run .top { display: flex; align-items: center; gap: 8px; }
+  #run .top .title { flex: 1; text-align: center; font-weight: 650; opacity: .95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #run .top .icon-btn { background: rgba(0,0,0,.2); color: #fff; }
+  #run .counters { display: flex; justify-content: space-around; margin-top: 12px; }
+  #run .counters div { text-align: center; min-width: 70px; }
+  #run .counters small { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
+  #run .counters b { font-size: 26px; font-variant-numeric: tabular-nums; }
+  #run .center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
+  #run .ring { position: relative; width: min(76vw, 46vh, 340px); aspect-ratio: 1; cursor: pointer; }
+  #run .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  #run .ring circle { fill: none; stroke-width: 9; }
+  #run .ring .bg { stroke: rgba(0,0,0,.18); }
+  #run .ring .fg { stroke: #fff; stroke-linecap: round; transition: stroke-dashoffset .15s linear; }
+  #run .ring .txt { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 12%; }
+  #run .blk { font-size: 12px; font-weight: 700; opacity: .8; text-transform: uppercase; letter-spacing: 1.5px; }
+  #run .phase-label { font-size: clamp(16px, 5vw, 22px); font-weight: 800; text-transform: uppercase; letter-spacing: 3px; }
+  #run .big { font-size: min(22vw, 13vh, 100px); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.05; letter-spacing: -2px; }
+  #run .exercise { font-size: clamp(16px, 5vw, 22px); font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  #run .exnote { font-size: 13px; opacity: .85; margin-top: 2px; }
+  #run .paused-tag { margin-top: 6px; font-size: 12px; font-weight: 800; letter-spacing: 2px; background: rgba(0,0,0,.28); padding: 4px 10px; border-radius: 20px; }
+  #run .lapbox { margin-top: 14px; display: flex; gap: 10px; align-items: center; }
+  #run .lapbtn { background: #fff; color: #111; border-radius: 30px; padding: 12px 22px; font-weight: 800; font-size: 17px; }
+  #run .lapbtn:active { transform: scale(.95); }
+  #run .lapundo { background: rgba(0,0,0,.2); width: 40px; height: 40px; border-radius: 50%; color: #fff; }
+  #run .next { margin-top: 14px; background: rgba(0,0,0,.18); padding: 9px 16px; border-radius: 14px; font-size: 15px; text-align: center; max-width: 100%; }
+  #run .next small { opacity: .8; }
+  #run .chips { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+  #run .chips button { background: rgba(0,0,0,.2); color: #fff; padding: 7px 13px; border-radius: 20px; font-size: 14px; font-weight: 650; }
+  #run .progress { height: 6px; background: rgba(0,0,0,.18); border-radius: 3px; overflow: hidden; margin: 10px 0 5px; }
+  #run .progress div { height: 100%; background: #fff; width: 0; transition: width .2s linear; }
+  #run .times { display: flex; justify-content: space-between; font-size: 13px; opacity: .9; font-variant-numeric: tabular-nums; }
+  #run .controls { display: flex; justify-content: center; align-items: center; gap: 28px; margin-top: 12px; }
+  #run .controls button { width: 60px; height: 60px; border-radius: 50%; background: rgba(0,0,0,.2); color: #fff; font-size: 22px; display: grid; place-items: center; }
+  #run .controls button.main { width: 84px; height: 84px; background: #fff; color: #111; font-size: 30px; }
+  #run .controls button:active { transform: scale(.93); }
+  #run.flash { animation: flash .45s; }
+  @keyframes flash { 0% { filter: brightness(1.5); } 100% { filter: none; } }
+  #run.lastsec .big { animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  #run.locked .controls, #run.locked .chips, #run.locked .lapbox, #run.locked .top #run-stop, #run.locked .top #run-plan { opacity: .3; pointer-events: none; }
+  #run.locked #run-lock { background: #fff; color: #111; }
+  #run.xxl .big { font-size: min(32vw, 20vh, 150px); }
+  #run.xxl .ring svg { opacity: .5; }
+  #run .lockhint { position: absolute; top: calc(64px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.6); padding: 6px 12px; border-radius: 20px; font-size: 13px; }
+  @media (orientation: landscape) and (max-height: 560px) {
+    #run .inner { max-width: 900px; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto; column-gap: 24px; }
+    #run .top { grid-column: 1 / 3; }
+    #run .center { grid-row: 2 / 5; grid-column: 1; }
+    #run .counters { grid-column: 2; grid-row: 2; align-self: center; }
+    #run .ring { width: min(60vh, 45vw); }
+    #run .meta { grid-column: 2; grid-row: 3; }
+    #run .controls { grid-column: 2; grid-row: 4; }
+  }
+
+  #done { position: absolute; inset: 0; background: var(--cool); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; overflow-y: auto; }
+  #done .trophy { font-size: 64px; }
+  #done h2 { color: #fff; font-size: 30px; text-transform: none; letter-spacing: 0; margin: 6px 0; justify-content: center; }
+  #done p { opacity: .92; margin: 2px 0; }
+  #done .rpe { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+  #done .rpe button { width: 34px; height: 34px; border-radius: 10px; background: rgba(0,0,0,.2); color: #fff; font-weight: 700; }
+  #done .rpe button.on { background: #fff; color: #111; }
+  #done textarea { background: rgba(0,0,0,.2); border: none; color: #fff; max-width: 360px; resize: none; }
+  #done textarea::placeholder { color: rgba(255,255,255,.7); }
+  #done .lbl { font-size: 13px; opacity: .85; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ========== HOME ========== -->
+  <section id="view-home">
+    <header>
+      <h1>Sport<span>Clock</span></h1>
+      <button class="icon-btn accent" id="btn-new" title="Nouvelle séance">＋</button>
+    </header>
+    <main>
+      <div id="resume"></div>
+
+      <h2>Minuteur rapide</h2>
+      <div class="quick">
+        <div class="grid3">
+          <div class="fld"><label>Effort</label><div class="tstep" data-q="work" data-kind="time"><button data-d="-1">−</button><input inputmode="numeric"><button data-d="1">+</button></div></div>
+          <div class="fld"><label>Repos</label><div class="tstep" data-q="rest" data-kind="time"><button data-d="-1">−</button><input inputmode="numeric"><button data-d="1">+</button></div></div>
+          <div class="fld"><label>Tours</label><div class="tstep" data-q="rounds" data-kind="num"><button data-d="-1">−</button><input inputmode="numeric"><button data-d="1">+</button></div></div>
+        </div>
+        <p class="summary" id="quick-summary"></p>
+        <div class="btn-row">
+          <button class="btn" id="quick-save">💾 Enregistrer</button>
+          <button class="btn primary" id="quick-start">▶ Démarrer</button>
+        </div>
+      </div>
+
+      <h2>Modèles</h2>
+      <div class="templates" id="templates"></div>
+
+      <h2><span>Mes séances</span><span id="count"></span></h2>
+      <input class="search hidden" id="search" placeholder="🔍 Rechercher une séance…">
+      <div id="profile-list"></div>
+    </main>
+  </section>
+
+  <!-- ========== EDITOR ========== -->
+  <section id="view-edit" class="hidden">
+    <header>
+      <button class="icon-btn" id="edit-back" title="Retour">←</button>
+      <h1 id="edit-title">Nouvelle séance</h1>
+      <button class="icon-btn accent" id="edit-save" title="Enregistrer">✓</button>
+    </header>
+    <main style="padding-bottom:150px">
+      <div class="section">
+        <div class="fld"><label>Nom de la séance</label><input id="f-name" placeholder="Ex. HIIT du mardi" maxlength="40"></div>
+        <div class="grid3" style="margin-top:12px">
+          <div class="fld"><label><span class="dot" style="background:var(--prep)"></span> Préparation</label><div id="f-prep"></div></div>
+          <div class="fld"><label><span class="dot" style="background:var(--cool)"></span> Retour calme</label><div id="f-cool"></div></div>
+          <div class="fld"><label>🔁 Répéter tout</label><div id="f-repeat"></div></div>
+        </div>
+        <div id="f-represt-wrap" class="fld" style="margin-top:12px"><label><span class="dot" style="background:var(--blockrest)"></span> Repos entre deux passages</label><div id="f-represt"></div></div>
+        <div class="fld" style="margin-top:12px"><label>Couleur</label><div class="colors" id="f-colors"></div></div>
+      </div>
+
+      <h2>Blocs <span style="text-transform:none;letter-spacing:0;font-weight:400">enchaînés dans l'ordre</span></h2>
+      <div id="blocks"></div>
+      <div class="addblock" id="addblock">
+        <button data-type="interval"><b>⏱</b>Intervalles</button>
+        <button data-type="emom"><b>⏰</b>EMOM</button>
+        <button data-type="amrap"><b>🔄</b>AMRAP</button>
+        <button data-type="fortime"><b>🏁</b>For Time</button>
+      </div>
+      <p class="hint" style="text-align:center;margin-top:10px">Combinez plusieurs blocs : échauffement → Tabata → AMRAP → étirements…</p>
+    </main>
+    <div class="total-bar">
+      <div class="timeline" id="f-timeline"></div>
+      <div class="row">
+        <div class="t"><small style="color:var(--muted)">Durée totale</small><br><b id="f-total">0:00</b></div>
+        <button class="btn small" id="edit-preview">☰ Plan</button>
+        <button class="btn small primary" id="edit-start">▶ Tester</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== HISTORY ========== -->
+  <section id="view-history" class="hidden">
+    <header><h1>Progression</h1><button class="icon-btn" id="hist-clear" title="Effacer">🗑</button></header>
+    <main>
+      <div class="stats">
+        <div class="stat"><b id="st-sessions">0</b><small>Séances</small></div>
+        <div class="stat"><b id="st-time">0</b><small>Minutes</small></div>
+        <div class="stat"><b id="st-week">0</b><small>7 jours</small></div>
+        <div class="stat"><b id="st-streak">0</b><small>🔥 Série</small></div>
+      </div>
+      <div class="heat"><div class="g" id="heat"></div><div class="lg"><span>il y a 12 semaines</span><span>aujourd'hui</span></div></div>
+      <h2>Séances récentes</h2>
+      <div id="hist-list"></div>
+    </main>
+  </section>
+
+  <!-- ========== SETTINGS ========== -->
+  <section id="view-settings" class="hidden">
+    <header><h1>Réglages</h1></header>
+    <main>
+      <h2>Sons & voix</h2>
+      <div class="section" style="padding:0 14px">
+        <label class="setting"><span><b>Bips de changement de phase</b><small>Son distinct pour effort et repos</small></span><span class="switch"><input type="checkbox" data-s="beeps"><span></span></span></label>
+        <div class="setting"><span><b>Compte à rebours sonore</b><small>Bips courts avant chaque fin de phase</small></span>
+          <select data-s="cdLen"><option value="0">Aucun</option><option value="3">3 s</option><option value="5">5 s</option><option value="10">10 s</option></select></div>
+        <label class="setting"><span><b>Annonces vocales</b><small>Nom de l'exercice, « Repos », « Terminé »…</small></span><span class="switch"><input type="checkbox" data-s="voice"><span></span></span></label>
+        <label class="setting"><span><b>Annoncer l'exercice suivant</b><small>Quelques secondes avant la fin du repos</small></span><span class="switch"><input type="checkbox" data-s="preannounce"><span></span></span></label>
+        <label class="setting"><span><b>Rappel « 10 secondes »</b><small>Pendant les phases d'effort longues</small></span><span class="switch"><input type="checkbox" data-s="tenSec"><span></span></span></label>
+        <label class="setting"><span><b>Bip à mi-parcours</b><small>Pendant les phases d'effort</small></span><span class="switch"><input type="checkbox" data-s="halfway"><span></span></span></label>
+        <label class="setting"><span><b>Vibrations</b><small>Sur téléphone compatible</small></span><span class="switch"><input type="checkbox" data-s="vibrate"><span></span></span></label>
+        <div class="setting"><span><b>Volume</b></span><input type="range" min="0" max="1" step="0.05" data-s="volume" style="width:50%"></div>
+        <div class="setting"><span><b>Type de son</b></span>
+          <select data-s="sound"><option value="beep">Bip</option><option value="whistle">Sifflet</option><option value="bell">Cloche</option><option value="boxing">Gong</option></select></div>
+        <div class="setting"><span><b>Vitesse de la voix</b></span>
+          <select data-s="rate"><option value="0.9">Lente</option><option value="1.05">Normale</option><option value="1.25">Rapide</option></select></div>
+        <div class="setting"><span><b>Essayer</b></span><button class="btn small" id="test-sound">🔊 Écouter</button></div>
+      </div>
+
+      <h2>Pendant la séance</h2>
+      <div class="section" style="padding:0 14px">
+        <label class="setting"><span><b>Garder l'écran allumé</b></span><span class="switch"><input type="checkbox" data-s="wakelock"><span></span></span></label>
+        <label class="setting"><span><b>Mode arrière-plan</b><small>Commandes sur l'écran verrouillé et minuteur actif en arrière-plan (selon le téléphone)</small></span><span class="switch"><input type="checkbox" data-s="background"><span></span></span></label>
+        <label class="setting"><span><b>Toucher le cercle = pause</b></span><span class="switch"><input type="checkbox" data-s="tapPause"><span></span></span></label>
+        <label class="setting"><span><b>Chiffres XXL</b><small>Lisible de loin (téléphone posé au sol)</small></span><span class="switch"><input type="checkbox" data-s="xxl"><span></span></span></label>
+        <div class="setting"><span><b>Temps affiché</b></span>
+          <select data-s="display"><option value="remaining">Restant</option><option value="elapsed">Écoulé</option></select></div>
+      </div>
+
+      <h2>Apparence</h2>
+      <div class="section" style="padding:0 14px">
+        <div class="setting"><span><b>Thème</b></span>
+          <select data-s="theme"><option value="auto">Automatique</option><option value="dark">Sombre</option><option value="light">Clair</option></select></div>
+      </div>
+
+      <h2>Données</h2>
+      <div class="btn-row">
+        <button class="btn" id="export">⬇ Sauvegarder</button>
+        <button class="btn" id="import">⬆ Restaurer</button>
+      </div>
+      <input type="file" id="import-file" accept="application/json,.json" class="hidden">
+      <p class="hint" style="text-align:center;margin-top:20px">Clavier en séance : <b>Espace</b> pause · <b>→ / ←</b> phase suivante / précédente · <b>T</b> +1 tour · <b>+ / −</b> ±10 s · <b>Échap</b> arrêter</p>
+    </main>
+  </section>
+
+  <nav class="tabs" id="tabs">
+    <button data-v="home" class="active"><span class="ic">⏱</span>Séances</button>
+    <button data-v="history"><span class="ic">📈</span>Progression</button>
+    <button data-v="settings"><span class="ic">⚙</span>Réglages</button>
+  </nav>
+</div>
+
+<!-- ========== RUN ========== -->
+<div id="run" class="hidden">
+  <div class="inner">
+    <div class="top">
+      <button class="icon-btn" id="run-stop" title="Arrêter">✕</button>
+      <button class="icon-btn" id="run-plan" title="Plan de la séance">☰</button>
+      <div class="title" id="run-title"></div>
+      <button class="icon-btn" id="run-mute" title="Son">🔊</button>
+      <button class="icon-btn" id="run-lock" title="Verrouiller">🔓</button>
+    </div>
+    <div class="counters" id="run-counters"></div>
+    <div class="center">
+      <div class="ring" id="run-ring">
+        <svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="54"/><circle class="fg" id="run-arc" cx="60" cy="60" r="54"/></svg>
+        <div class="txt">
+          <div class="blk" id="run-blk"></div>
+          <div class="phase-label" id="run-phase"></div>
+          <div class="big" id="run-time">0:00</div>
+          <div class="exercise" id="run-ex"></div>
+          <div class="exnote" id="run-note"></div>
+          <div class="paused-tag hidden" id="run-paused">EN PAUSE</div>
+        </div>
+      </div>
+      <div class="lapbox hidden" id="run-lapbox">
+        <button class="lapundo" id="run-lapundo" title="Annuler un tour">↶</button>
+        <button class="lapbtn" id="run-lap">＋1 tour · <span id="run-laps">0</span></button>
+      </div>
+      <div class="next" id="run-next"></div>
+      <div class="chips">
+        <button id="run-minus">−10 s</button>
+        <button id="run-plus">+10 s</button>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="progress"><div id="run-prog"></div></div>
+      <div class="times"><span id="run-elapsed">0:00</span><span id="run-len">0:00</span></div>
+    </div>
+    <div class="controls">
+      <button id="run-prev" title="Précédent">⏮</button>
+      <button id="run-toggle" class="main" title="Pause">⏸</button>
+      <button id="run-next-btn" title="Suivant">⏭</button>
+    </div>
+  </div>
+  <div class="lockhint hidden" id="run-lockhint">Appui long sur 🔒 pour déverrouiller</div>
+  <div id="done" class="hidden">
+    <div class="trophy">🏆</div>
+    <h2>Bravo !</h2>
+    <p id="done-sum"></p>
+    <div class="lbl">Ressenti de l'effort (1 = très facile · 10 = maximal)</div>
+    <div class="rpe" id="done-rpe"></div>
+    <textarea id="done-note" rows="2" placeholder="Une note ? (charge, sensations…)"></textarea>
+    <div class="btn-row" style="width:100%;max-width:360px;margin-top:20px">
+      <button class="btn" id="done-again" style="background:rgba(0,0,0,.2);color:#fff">↻ Refaire</button>
+      <button class="btn" id="done-close" style="background:#fff;color:#111">Terminer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* ================= Utils ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clone = o => JSON.parse(JSON.stringify(o));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+const fmtH = s => s < 60 ? `${s} s` : (s % 60 ? fmt(s) : `${s / 60} min`);
+const parseTime = v => { v = String(v).trim().replace(',', '.'); if (!v) return NaN;
+  if (v.includes(':')) { const p = v.split(':').map(Number); return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + (p[1] || 0); }
+  return Math.round(parseFloat(v)); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const getP = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
+const setP = (o, p, v) => { const ks = p.split('.'), l = ks.pop(); ks.reduce((a, k) => a[k], o)[l] = v; };
+const timeStep = (v, d) => d > 0 ? (v < 60 ? 5 : v < 300 ? 15 : 60) : (v <= 60 ? 5 : v <= 300 ? 15 : 60);
+
+const COLORS = ['#ff6b35', '#ef4444', '#e84393', '#8b5cf6', '#3d7fe0', '#0ea5b7', '#22a565', '#e0a800'];
+const PHASE = {
+  prep:      { label: 'Préparation', color: 'var(--prep)', say: 'Préparez-vous' },
+  work:      { label: 'Effort', color: 'var(--work)', say: 'Effort' },
+  rest:      { label: 'Repos', color: 'var(--rest)', say: 'Repos' },
+  setrest:   { label: 'Repos série', color: 'var(--setrest)', say: 'Repos entre séries' },
+  blockrest: { label: 'Transition', color: 'var(--blockrest)', say: 'Récupération' },
+  amrap:     { label: 'AMRAP', color: 'var(--amrap)', say: 'Un maximum de tours, go' },
+  fortime:   { label: 'For Time', color: 'var(--fortime)', say: 'Chrono lancé, go' },
+  cool:      { label: 'Retour au calme', color: 'var(--cool)', say: 'Retour au calme' },
+};
+const TYPES = {
+  interval: { label: 'Intervalles', icon: '⏱', color: '#ef4444' },
+  emom:     { label: 'EMOM', icon: '⏰', color: '#3d7fe0' },
+  amrap:    { label: 'AMRAP', icon: '🔄', color: '#f97316' },
+  fortime:  { label: 'For Time', icon: '🏁', color: '#db2777' },
+};
+
+/* ================= Data ================= */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('sc_' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('sc_' + k, JSON.stringify(v)); } catch {} },
+};
+const DEFAULT_SETTINGS = { beeps: true, cdLen: '3', voice: true, preannounce: true, tenSec: true, halfway: false, vibrate: true,
+  volume: 0.8, sound: 'beep', rate: '1.05', wakelock: true, background: true, tapPause: true, xxl: false, display: 'remaining', theme: 'auto' };
+let settings = { ...DEFAULT_SETTINGS, ...store.get('settings', {}) };
+let quick = store.get('quick', { work: 30, rest: 15, rounds: 8 });
+
+const newBlock = (type = 'interval') => ({
+  id: uid(), type, name: '',
+  work: { interval: 30, emom: 60, amrap: 600, fortime: 1200 }[type],
+  rest: type === 'interval' ? 15 : 0,
+  rounds: { interval: 8, emom: 10, amrap: 1, fortime: 1 }[type],
+  sets: 1, setRest: 60, skipLastRest: true, exercises: [], restAfter: 60,
+});
+const newWorkout = () => ({ v: 2, id: uid(), name: '', color: COLORS[0], fav: false, prep: 10, cool: 0, repeat: 1, repeatRest: 60, blocks: [newBlock()] });
+const B = (type, o) => ({ ...newBlock(type), ...o, exercises: (o.exercises || []).map(e => typeof e === 'string' ? { name: e } : e) });
+const W = (name, color, o, blocks) => ({ ...newWorkout(), name, color, ...o, blocks });
+
+const TEMPLATES = [
+  W('Tabata', '#ef4444', {}, [B('interval', { work: 20, rest: 10, rounds: 8 })]),
+  W('HIIT 40/20', '#ff6b35', {}, [B('interval', { work: 40, rest: 20, rounds: 10 })]),
+  W('EMOM 12', '#3d7fe0', {}, [B('emom', { work: 60, rounds: 12, exercises: ['10 burpees', '15 kettlebell swings', '20 air squats'] })]),
+  W('AMRAP 15', '#f97316', {}, [B('amrap', { work: 900, exercises: ['5 tractions', '10 pompes', '15 squats'] })]),
+  W('For Time', '#db2777', {}, [B('fortime', { work: 1200, exercises: ['50 double unders', '40 sit-ups', '30 box jumps', '20 thrusters'] })]),
+  W('Circuit full body', '#22a565', { prep: 15, cool: 120 }, [B('interval', { work: 45, rest: 15, rounds: 4, sets: 3, setRest: 90,
+    exercises: [{ name: 'Squats' }, { name: 'Pompes', note: 'Sur les genoux si besoin' }, { name: 'Fentes alternées' }, { name: 'Gainage', dur: 30 }] })]),
+  W('Séance complète', '#8b5cf6', { cool: 180 }, [
+    B('interval', { name: 'Échauffement', work: 30, rest: 0, rounds: 5, restAfter: 30, exercises: ['Jumping jacks', 'Rotations de bras', 'Montées de genoux', 'Squats lents', 'Talons-fesses'] }),
+    B('interval', { name: 'Tabata', work: 20, rest: 10, rounds: 8, restAfter: 120, exercises: ['Burpees', 'Mountain climbers'] }),
+    B('amrap', { name: 'Finisher', work: 480, exercises: ['10 pompes', '15 squats sautés', '20 crunchs'] })]),
+  W('Pyramide gainage', '#0ea5b7', {}, [B('interval', { work: 30, rest: 15, rounds: 7, exercises: [
+    { name: 'Planche', dur: 20 }, { name: 'Planche', dur: 30 }, { name: 'Planche', dur: 40 }, { name: 'Planche', dur: 60 }, { name: 'Planche', dur: 40 }, { name: 'Planche', dur: 30 }, { name: 'Planche', dur: 20 }] })]),
+  W('Fractionné 30/30', '#e0a800', { prep: 15 }, [B('interval', { work: 30, rest: 30, rounds: 10, sets: 2, setRest: 180, exercises: ['Accélération'] })]),
+  W('Boxe 3×3 min', '#e84393', {}, [B('interval', { work: 180, rest: 60, rounds: 6 })]),
+];
+
+function migrate(p) {
+  if (p.v === 2 && Array.isArray(p.blocks)) return { ...newWorkout(), ...p, blocks: p.blocks.map(b => ({ ...newBlock(b.type), ...b })) };
+  return { ...newWorkout(), id: p.id || uid(), name: p.name || '', color: p.color || COLORS[0], prep: p.prep ?? 10, cool: p.cool || 0,
+    blocks: [{ ...newBlock('interval'), work: p.work ?? 30, rest: p.rest ?? 15, rounds: p.rounds ?? 8, sets: p.sets ?? 1, setRest: p.setRest ?? 60,
+      skipLastRest: p.skipLastRest !== false, exercises: p.exercises || [] }] };
+}
+let profiles = store.get('profiles', null);
+if (!profiles) profiles = [clone(TEMPLATES[0]), clone(TEMPLATES[5]), clone(TEMPLATES[6])].map(w => ({ ...w, id: uid() }));
+profiles = profiles.map(migrate);
+let history = store.get('history', []);
+const saveProfiles = () => store.set('profiles', profiles);
+const saveHistory = () => store.set('history', history);
+
+/* ================= Phase engine ================= */
+function buildPhases(w) {
+  const out = [], nb = w.blocks.length;
+  if (w.prep > 0) out.push({ kind: 'prep', dur: w.prep });
+  for (let rep = 1; rep <= w.repeat; rep++) {
+    w.blocks.forEach((b, bi) => {
+      const base = { bi, nb, bname: b.name || TYPES[b.type].label, btype: b.type, rep, reps: w.repeat };
+      const ex = (b.exercises || []).filter(e => e.name && e.name.trim());
+      if (b.type === 'amrap' || b.type === 'fortime') {
+        if (b.work > 0) out.push({ ...base, kind: b.type, dur: b.work, ex: ex.map(e => e.name).join(' · '), lapable: true, countUp: b.type === 'fortime' });
+      } else {
+        const rounds = Math.max(1, b.rounds), sets = Math.max(1, b.sets);
+        for (let s = 1; s <= sets; s++) for (let r = 1; r <= rounds; r++) {
+          const e = ex.length ? ex[(r - 1) % ex.length] : null;
+          const wd = e && e.dur > 0 ? +e.dur : b.work;
+          const pos = { round: r, rounds, set: s, sets };
+          if (wd > 0) out.push({ ...base, ...pos, kind: 'work', dur: wd, ex: e?.name || '', note: e?.note || '' });
+          if (b.type === 'emom') continue;
+          const lastR = r === rounds, lastS = s === sets;
+          if (lastR && !lastS) { if (b.setRest > 0) out.push({ ...base, ...pos, kind: 'setrest', dur: b.setRest }); else if (b.rest > 0) out.push({ ...base, ...pos, kind: 'rest', dur: b.rest }); }
+          else if (!lastR && b.rest > 0) out.push({ ...base, ...pos, kind: 'rest', dur: b.rest });
+          else if (lastR && lastS && !b.skipLastRest && b.rest > 0) out.push({ ...base, ...pos, kind: 'rest', dur: b.rest });
+        }
+      }
+      const lastBlock = bi === nb - 1;
+      if (!lastBlock && b.restAfter > 0) out.push({ ...base, kind: 'blockrest', dur: b.restAfter, nextBlock: w.blocks[bi + 1].name || TYPES[w.blocks[bi + 1].type].label });
+      if (lastBlock && rep < w.repeat && w.repeatRest > 0) out.push({ ...base, kind: 'blockrest', dur: w.repeatRest, nextBlock: `Passage ${rep + 1}` });
+    });
+  }
+  if (w.cool > 0) out.push({ kind: 'cool', dur: w.cool });
+  for (let i = out.length - 1, nx = ''; i >= 0; i--) { out[i].nextEx = nx; if (out[i].kind === 'work' || out[i].lapable) nx = out[i].ex || ''; }
+  return out;
+}
+const totalOf = w => buildPhases(w).reduce((a, x) => a + x.dur, 0);
+function blockDesc(b) {
+  const n = (b.exercises || []).filter(e => e.name).length, exs = n ? ` · ${n} exo${n > 1 ? 's' : ''}` : '';
+  if (b.type === 'amrap') return `AMRAP ${fmtH(b.work)}${exs}`;
+  if (b.type === 'fortime') return `For Time · limite ${fmtH(b.work)}${exs}`;
+  if (b.type === 'emom') return `EMOM ${b.work === 60 ? '' : fmtH(b.work) + ' '}× ${b.rounds}${b.sets > 1 ? ` × ${b.sets}` : ''}${exs}`;
+  return `${fmtH(b.work)} / ${fmtH(b.rest)} × ${b.rounds}${b.sets > 1 ? ` × ${b.sets} séries` : ''}${exs}`;
+}
+const describe = w => (w.repeat > 1 ? `${w.repeat}× [ ` : '') + w.blocks.map(blockDesc).join(' → ') + (w.repeat > 1 ? ' ]' : '');
+const timelineHTML = w => { const ph = buildPhases(w), t = ph.reduce((a, x) => a + x.dur, 0) || 1;
+  return ph.map(x => `<div style="flex:${x.dur / t};background:${PHASE[x.kind].color}"></div>`).join(''); };
+
+/* ================= Audio / voice / vibration ================= */
+let actx = null, muted = false;
+function audio() {
+  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch {}
+  return actx;
+}
+function tone(freq, dur, { type = 'sine', vol = 1, when = 0, slide = 0 } = {}) {
+  if (muted || settings.volume <= 0) return;
+  const c = audio(); if (!c) return;
+  const t = c.currentTime + when, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(settings.volume * vol * .5, t + .01);
+  g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .05);
+}
+const isWork = k => k === 'work' || k === 'amrap' || k === 'fortime';
+const SOUNDS = {
+  beep: { tick: () => tone(880, .12, { type: 'square', vol: .45 }),
+    go: k => isWork(k) ? tone(1320, .5, { type: 'square', vol: .7 }) : tone(660, .55, { type: 'square', vol: .6 }),
+    end: () => [880, 1100, 1320].forEach((f, i) => tone(f, i === 2 ? .7 : .2, { type: 'square', when: i * .22 })) },
+  whistle: { tick: () => tone(2000, .08, { vol: .5 }),
+    go: k => { tone(2400, .35, { type: 'triangle', slide: isWork(k) ? 1.1 : .8 }); tone(2600, .25, { type: 'triangle', when: .38 }); },
+    end: () => { for (let i = 0; i < 3; i++) tone(2500, .25, { type: 'triangle', when: i * .3 }); } },
+  bell: { tick: () => tone(1200, .15, { vol: .4 }),
+    go: k => { const f = isWork(k) ? 880 : 587; tone(f, 1.2, { vol: .8 }); tone(f * 2.76, .8, { vol: .25 }); },
+    end: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 1, { when: i * .18, vol: .7 })) },
+  boxing: { tick: () => tone(700, .1, { type: 'triangle', vol: .5 }),
+    go: k => { for (let i = 0; i < (isWork(k) ? 1 : 2); i++) { tone(220, 1.4, { when: i * .35 }); tone(331, 1.2, { type: 'triangle', vol: .4, when: i * .35 }); } },
+    end: () => { for (let i = 0; i < 3; i++) tone(220, 1.2, { when: i * .4 }); } },
+};
+const snd = () => SOUNDS[settings.sound] || SOUNDS.beep;
+let frVoice = null;
+const pickVoice = () => { const vs = speechSynthesis.getVoices();
+  frVoice = vs.find(v => /^fr/i.test(v.lang) && /google|natural|online|premium|enhanced/i.test(v.name)) || vs.find(v => /^fr/i.test(v.lang)) || null; };
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function say(text, force) {
+  if (!text || muted || (!settings.voice && !force) || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.lang = 'fr-FR'; if (frVoice) u.voice = frVoice;
+  u.volume = Math.min(1, settings.volume + .2); u.rate = +settings.rate; speechSynthesis.speak(u);
+}
+const buzz = p => { try { if (settings.vibrate && !muted && navigator.vibrate) navigator.vibrate(p); } catch {} };
+
+/* Wake lock + background (silent audio keeps the page alive, Media Session gives lock-screen controls) */
+let wakeLock = null;
+async function lockScreen() { if (!settings.wakelock || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch {} }
+function unlockScreen() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && runState && !runState.done) { lockScreen(); update(); } });
+let silent = null;
+function silentUrl() { const sr = 8000, n = sr * 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })); }
+function bgStart() {
+  if (!settings.background) return;
+  try { if (!silent) { silent = new Audio(silentUrl()); silent.loop = true; } silent.play().catch(() => {}); } catch {}
+  if ('mediaSession' in navigator) try {
+    const ms = navigator.mediaSession;
+    ms.setActionHandler('play', () => runState?.paused && togglePause());
+    ms.setActionHandler('pause', () => runState && !runState.paused && togglePause());
+    ms.setActionHandler('nexttrack', () => jump(1));
+    ms.setActionHandler('previoustrack', () => jump(-1));
+  } catch {}
+}
+function bgStop() { try { silent?.pause(); } catch {} if ('mediaSession' in navigator) try { navigator.mediaSession.metadata = null; } catch {} }
+function bgMeta(ph) {
+  if (!settings.background || !('mediaSession' in navigator) || !window.MediaMetadata) return;
+  try { navigator.mediaSession.metadata = new MediaMetadata({ title: PHASE[ph.kind].label + (ph.ex ? ' · ' + ph.ex : ''), artist: runState.w.name || 'SportClock', album: 'SportClock' });
+    navigator.mediaSession.playbackState = runState.paused ? 'paused' : 'playing'; } catch {}
+}
+
+/* ================= UI helpers ================= */
+function toast(msg, action, fn) {
+  $$('.toast').forEach(t => t.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `<span>${esc(msg)}</span>${action ? `<button>${esc(action)}</button>` : ''}`;
+  if (action) t.querySelector('button').onclick = () => { t.remove(); fn(); };
+  document.body.appendChild(t); setTimeout(() => t.remove(), action ? 5000 : 2000);
+}
+function sheet(html, bind) {
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  bg.innerHTML = `<div class="sheet"><div class="grab"></div>${html}</div>`;
+  const close = () => bg.remove();
+  bg.onclick = e => { if (e.target === bg) close(); };
+  document.body.appendChild(bg); bind?.(bg, close); return close;
+}
+function confirmSheet(title, text, ok, onOk, onCancel) {
+  sheet(`<h4>${title}</h4><p>${text}</p><div class="btn-row"><button class="btn" data-a="no">Annuler</button><button class="btn danger" data-a="ok">${ok}</button></div>`,
+    (el, close) => { el.querySelector('[data-a=no]').onclick = () => { close(); onCancel?.(); }; el.querySelector('[data-a=ok]').onclick = () => { close(); onOk(); }; });
+}
+const stepHTML = (path, kind = 'time', min = 0, max = 7200) =>
+  `<div class="tstep" data-path="${path}" data-kind="${kind}" data-min="${min}" data-max="${max}"><button type="button" data-d="-1">−</button><input inputmode="${kind === 'num' ? 'numeric' : 'text'}"><button type="button" data-d="1">+</button></div>`;
+/* Generic stepper binding: get(), set(v) */
+function bindStep(el, get, set) {
+  const kind = el.dataset.kind, min = +(el.dataset.min || 0), max = +(el.dataset.max || (kind === 'num' ? 99 : 7200));
+  const inp = el.querySelector('input');
+  const show = () => { inp.value = kind === 'num' ? get() : fmt(get()); };
+  const apply = v => { set(clamp(v, min, max)); show(); };
+  let rep = null;
+  el.querySelectorAll('button').forEach(b => {
+    const d = +b.dataset.d;
+    const once = () => { const v = +get() || 0; apply(v + d * (kind === 'num' ? 1 : timeStep(v, d))); };
+    b.onclick = e => { if (b._held) { b._held = false; return; } once(); };
+    b.onpointerdown = () => { rep = setTimeout(function r() { b._held = true; once(); rep = setTimeout(r, 90); }, 450); };
+    b.onpointerup = b.onpointerleave = b.onpointercancel = () => clearTimeout(rep);
+  });
+  inp.onfocus = () => inp.select();
+  inp.onchange = () => { const v = kind === 'num' ? parseInt(inp.value) : parseTime(inp.value); if (!isNaN(v)) apply(v); else show(); };
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); };
+  show();
+}
+
+/* ================= Navigation ================= */
+let currentView = 'home';
+function show(view) {
+  currentView = view;
+  ['home', 'edit', 'history', 'settings'].forEach(v => $('#view-' + v).classList.toggle('hidden', v !== view));
+  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.v === view));
+  $('#tabs').classList.toggle('hidden', view === 'edit');
+  ({ home: renderHome, history: renderHistory, settings: renderSettings })[view]?.();
+  window.scrollTo(0, 0);
+}
+$$('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
+function applyTheme() {
+  const t = settings.theme === 'auto' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : settings.theme;
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name=theme-color]').content = t === 'light' ? '#f3f4f7' : '#0f1115';
+}
+matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', applyTheme);
+
+/* ================= Home ================= */
+const quickWorkout = () => ({ ...newWorkout(), id: 'quick', name: 'Minuteur rapide', color: '#ff6b35',
+  blocks: [{ ...newBlock('interval'), work: quick.work, rest: quick.rest, rounds: quick.rounds }] });
+$$('.quick .tstep').forEach(el => bindStep(el, () => quick[el.dataset.q], v => {
+  quick[el.dataset.q] = el.dataset.q === 'work' ? Math.max(5, v) : el.dataset.q === 'rounds' ? Math.max(1, v) : v;
+  store.set('quick', quick); quickSummary(); }));
+const quickSummary = () => $('#quick-summary').textContent = `${quick.rounds} × (${fmtH(quick.work)} effort + ${fmtH(quick.rest)} repos) · total ${fmt(totalOf(quickWorkout()))}`;
+$('#quick-start').onclick = () => startRun(quickWorkout());
+$('#quick-save').onclick = () => openEditor({ ...quickWorkout(), id: uid(), name: `Intervalles ${quick.work}/${quick.rest}` }, true);
+$('#btn-new').onclick = () => newSheet();
+$('#search').oninput = renderList;
+
+function renderHome() {
+  $$('.quick .tstep').forEach(el => { el.querySelector('input').value = el.dataset.kind === 'num' ? quick[el.dataset.q] : fmt(quick[el.dataset.q]); });
+  quickSummary();
+  const last = history.find(h => profiles.some(p => p.id === h.wid));
+  const lw = last && profiles.find(p => p.id === last.wid);
+  $('#resume').innerHTML = lw ? `<div class="resume" style="--c:${lw.color}"><div class="t"><small>Reprendre · ${relDate(last.date)}</small><b>${esc(lw.name)}</b><small>${fmt(totalOf(lw))} · ${esc(describe(lw))}</small></div><div class="go">▶</div></div>` : '';
+  if (lw) $('#resume .resume').onclick = () => startRun(lw);
+  $('#templates').innerHTML = TEMPLATES.map((t, i) => `<button data-t="${i}" style="--c:${t.color}"><b>${esc(t.name)}</b><small>${fmt(totalOf(t))} · ${esc(t.blocks.length > 1 ? t.blocks.length + ' blocs' : TYPES[t.blocks[0].type].label)}</small></button>`).join('');
+  $$('#templates button').forEach(b => b.onclick = () => preview({ ...clone(TEMPLATES[+b.dataset.t]), id: uid() }, true));
+  $('#search').classList.toggle('hidden', profiles.length < 6);
+  renderList();
+}
+function renderList() {
+  const q = $('#search').value.trim().toLowerCase();
+  const list = profiles.filter(p => !q || (p.name + ' ' + describe(p) + ' ' + p.blocks.flatMap(b => b.exercises.map(e => e.name)).join(' ')).toLowerCase().includes(q))
+    .sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
+  $('#count').textContent = profiles.length || '';
+  if (!profiles.length) { $('#profile-list').innerHTML = `<div class="empty">Aucune séance enregistrée.<br>Touchez <b>＋</b> ou partez d'un modèle ci-dessus.</div>`; return; }
+  if (!list.length) { $('#profile-list').innerHTML = `<div class="empty">Aucun résultat.</div>`; return; }
+  $('#profile-list').innerHTML = list.map(p => `<div class="card" style="--c:${p.color}" data-id="${p.id}">
+    <div class="info"><div class="name">${esc(p.name || 'Sans nom')}</div><div class="meta">${fmt(totalOf(p))} · ${esc(describe(p))}</div><div class="bar">${timelineHTML(p)}</div></div>
+    <button class="star ${p.fav ? 'on' : ''}" title="Favori">${p.fav ? '★' : '☆'}</button>
+    <button class="play" title="Démarrer">▶</button></div>`).join('');
+  $$('#profile-list .card').forEach(c => {
+    const p = profiles.find(x => x.id === c.dataset.id);
+    c.querySelector('.info').onclick = () => preview(p);
+    c.querySelector('.play').onclick = () => startRun(p);
+    c.querySelector('.star').onclick = () => { p.fav = !p.fav; saveProfiles(); renderList(); };
+  });
+}
+function relDate(t) {
+  const d = Math.floor((new Date().setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / 864e5);
+  return d === 0 ? "aujourd'hui" : d === 1 ? 'hier' : d < 7 ? `il y a ${d} jours` : new Date(t).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+function newSheet() {
+  sheet(`<h4>Nouvelle séance</h4><p>Partez de zéro ou d'un modèle à personnaliser.</p>
+    ${Object.entries(TYPES).map(([k, t]) => `<button class="item" data-k="${k}">${t.icon}&nbsp; ${t.label}<small style="color:var(--muted);margin-left:auto">${{ interval: 'effort / repos', emom: 'chaque minute', amrap: 'max de tours', fortime: 'le plus vite' }[k]}</small></button>`).join('')}`,
+    (el, close) => el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { close(); const w = newWorkout(); w.blocks = [newBlock(b.dataset.k)]; openEditor(w, true); }));
+}
+function preview(p, isTemplate = false) {
+  const saved = profiles.some(x => x.id === p.id);
+  sheet(`<h4>${esc(p.name || 'Sans nom')}</h4><p>${fmt(totalOf(p))} au total${p.repeat > 1 ? ` · répété ${p.repeat} fois` : ''}</p>
+    <div class="timeline" style="height:10px">${timelineHTML(p)}</div>
+    <div class="pv-blocks">
+      ${p.prep ? `<div><span class="dot" style="background:var(--prep)"></span>Préparation <span>${fmtH(p.prep)}</span></div>` : ''}
+      ${p.blocks.map((b, i) => `<div><span class="dot" style="background:${TYPES[b.type].color}"></span><b>${esc(b.name || TYPES[b.type].label)}</b><span>${esc(blockDesc(b))}</span></div>
+        ${b.exercises.filter(e => e.name).length ? `<div style="padding-left:20px"><span>${b.exercises.filter(e => e.name).map(e => esc(e.name)).join(' · ')}</span></div>` : ''}`).join('')}
+      ${p.cool ? `<div><span class="dot" style="background:var(--cool)"></span>Retour au calme <span>${fmtH(p.cool)}</span></div>` : ''}
+    </div>
+    <button class="btn primary block" data-a="play">▶ Démarrer</button>
+    <div class="btn-row"><button class="btn" data-a="edit">✎ ${isTemplate ? 'Personnaliser' : 'Modifier'}</button>${saved ? `<button class="btn" data-a="share">↗ Partager</button>` : `<button class="btn" data-a="save">💾 Enregistrer</button>`}</div>
+    ${saved ? `<button class="item" data-a="steps">☰&nbsp; Voir le détail des étapes</button><button class="item" data-a="dup">⧉&nbsp; Dupliquer</button><button class="item red" data-a="del">🗑&nbsp; Supprimer</button>` : `<button class="item" data-a="steps">☰&nbsp; Voir le détail des étapes</button>`}`,
+    (el, close) => el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+      close();
+      switch (b.dataset.a) {
+        case 'play': startRun(p); break;
+        case 'edit': openEditor(p, isTemplate); break;
+        case 'save': profiles.unshift(clone(p)); saveProfiles(); renderHome(); toast('Séance enregistrée'); break;
+        case 'share': share(p); break;
+        case 'steps': stepsSheet(buildPhases(p), -1); break;
+        case 'dup': { const i = profiles.indexOf(p); profiles.splice(i + 1, 0, { ...clone(p), id: uid(), name: p.name + ' (copie)', fav: false }); saveProfiles(); renderHome(); toast('Séance dupliquée'); break; }
+        case 'del': { const i = profiles.indexOf(p); profiles.splice(i, 1); saveProfiles(); renderHome();
+          toast('Séance supprimée', 'Annuler', () => { profiles.splice(i, 0, p); saveProfiles(); renderHome(); }); break; }
+      }
+    }));
+}
+function stepsSheet(ph, cur, onPick) {
+  let html = '', lastB = null;
+  ph.forEach((x, i) => {
+    const key = x.bi === undefined ? null : `${x.rep}-${x.bi}`;
+    if (key && key !== lastB && x.kind !== 'blockrest') { lastB = key; html += `<li class="bh">${esc(x.bname)}${x.reps > 1 ? ` · passage ${x.rep}` : ''}</li>`; }
+    const lbl = x.kind === 'work' ? (x.ex || 'Effort') + (x.sets > 1 ? ` · S${x.set}` : '') + ` · T${x.round}` : x.lapable ? `${PHASE[x.kind].label}${x.ex ? ' · ' + x.ex : ''}` : PHASE[x.kind].label;
+    html += `<li data-i="${i}" class="${i === cur ? 'cur' : i < cur ? 'past' : ''}"><span class="dot" style="background:${PHASE[x.kind].color}"></span><span class="k">${esc(lbl)}</span><span class="tm">${fmt(x.dur)}</span></li>`;
+  });
+  sheet(`<h4>Plan de la séance</h4><p>${ph.length} étapes${onPick ? ' · touchez une étape pour y aller' : ''}</p><ul class="steps">${html}</ul>`, (el, close) => {
+    el.querySelector('li.cur')?.scrollIntoView({ block: 'center' });
+    if (onPick) el.querySelectorAll('li[data-i]').forEach(li => li.onclick = () => { close(); onPick(+li.dataset.i); });
+  });
+}
+
+/* Share via link */
+const enc = o => btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const dec = s => JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))));
+async function share(p) {
+  const { id, fav, ...data } = p;
+  const url = location.href.split('#')[0] + '#w=' + enc(data);
+  if (navigator.share) { try { await navigator.share({ title: p.name, text: `Ma séance « ${p.name} » sur SportClock`, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); toast('Lien copié dans le presse-papiers'); } catch { prompt('Copiez ce lien :', url); }
+}
+function checkHash() {
+  const m = location.hash.match(/^#w=(.+)$/); if (!m) return;
+  history_replace();
+  try {
+    const w = migrate({ ...dec(m[1]), id: uid(), v: 2 });
+    sheet(`<h4>Séance partagée</h4><p>On vous a envoyé « ${esc(w.name)} » (${fmt(totalOf(w))}).</p><p>${esc(describe(w))}</p>
+      <div class="btn-row"><button class="btn" data-a="no">Ignorer</button><button class="btn primary" data-a="ok">Ajouter</button></div>`, (el, close) => {
+      el.querySelector('[data-a=no]').onclick = close;
+      el.querySelector('[data-a=ok]').onclick = () => { close(); profiles.unshift(w); saveProfiles(); renderHome(); toast('Séance ajoutée'); };
+    });
+  } catch { toast('Lien de séance invalide'); }
+}
+const history_replace = () => { try { window.history.replaceState(null, '', location.pathname + location.search); } catch {} };
+
+/* ================= Editor ================= */
+let draft = null, draftIsNew = false, draftDirty = false;
+function openEditor(p, isNew = false) {
+  draft = migrate(clone(p)); draftIsNew = isNew || !profiles.some(x => x.id === p.id); draftDirty = isNew;
+  if (draftIsNew && profiles.some(x => x.id === draft.id)) draft.id = uid();
+  $('#edit-title').textContent = draftIsNew ? 'Nouvelle séance' : 'Modifier';
+  $('#f-name').value = draft.name;
+  const top = (sel, key, kind = 'time', min = 0, max = 7200) => { $(sel).innerHTML = stepHTML(key, kind, min, max); bindStep($(sel).firstChild, () => draft[key], v => { draft[key] = v; changed(); }); };
+  top('#f-prep', 'prep'); top('#f-cool', 'cool'); top('#f-repeat', 'repeat', 'num', 1, 20); top('#f-represt', 'repeatRest');
+  $('#f-colors').innerHTML = COLORS.map(c => `<button style="background:${c}" data-c="${c}" class="${c === draft.color ? 'sel' : ''}"></button>`).join('');
+  $$('#f-colors button').forEach(b => b.onclick = () => { draft.color = b.dataset.c; draftDirty = true; $$('#f-colors button').forEach(x => x.classList.toggle('sel', x === b)); });
+  renderBlocks(); show('edit');
+}
+function changed(structural) { draftDirty = true; if (structural) renderBlocks(); else updateTotal(); }
+$('#f-name').oninput = e => { draft.name = e.target.value; draftDirty = true; };
+function renderBlocks() {
+  const nb = draft.blocks.length;
+  $('#blocks').innerHTML = draft.blocks.map((b, i) => {
+    const P = `blocks.${i}`, t = b.type, hasDur = t === 'interval' || t === 'emom';
+    let f = '';
+    if (t === 'interval') f = `<div class="grid2">
+        <div class="fld"><label><span class="dot" style="background:var(--work)"></span> Effort</label>${stepHTML(P + '.work')}</div>
+        <div class="fld"><label><span class="dot" style="background:var(--rest)"></span> Repos</label>${stepHTML(P + '.rest')}</div>
+        <div class="fld"><label>Tours</label>${stepHTML(P + '.rounds', 'num', 1, 99)}</div>
+        <div class="fld"><label>Séries</label>${stepHTML(P + '.sets', 'num', 1, 20)}</div>
+        ${b.sets > 1 ? `<div class="fld" style="grid-column:1/3"><label><span class="dot" style="background:var(--setrest)"></span> Repos entre séries</label>${stepHTML(P + '.setRest')}</div>` : ''}</div>
+        <label class="toggle-row"><span><b>Pas de repos après le dernier tour</b><small>On enchaîne directement sur la suite</small></span><span class="switch"><input type="checkbox" data-chk="${P}.skipLastRest" ${b.skipLastRest ? 'checked' : ''}><span></span></span></label>`;
+    else if (t === 'emom') f = `<div class="grid2">
+        <div class="fld"><label>Toutes les</label>${stepHTML(P + '.work')}</div>
+        <div class="fld"><label>Nombre de tours</label>${stepHTML(P + '.rounds', 'num', 1, 99)}</div>
+        <div class="fld"><label>Séries</label>${stepHTML(P + '.sets', 'num', 1, 20)}</div>
+        ${b.sets > 1 ? `<div class="fld"><label>Repos entre séries</label>${stepHTML(P + '.setRest')}</div>` : ''}</div>
+        <p class="hint">Faites le travail demandé au début de chaque intervalle ; le temps restant sert de récupération.</p>`;
+    else if (t === 'amrap') f = `<div class="fld"><label>Durée</label>${stepHTML(P + '.work')}</div>
+        <p class="hint">Un maximum de tours dans le temps imparti. Un bouton « +1 tour » permet de compter pendant la séance.</p>`;
+    else f = `<div class="fld"><label>Temps limite (time cap)</label>${stepHTML(P + '.work')}</div>
+        <p class="hint">Chrono qui monte : touchez « ⏭ » quand vous avez fini. Le temps réalisé est enregistré.</p>`;
+    const exs = b.exercises.map((e, j) => `<div class="ex ${hasDur ? '' : 'noDur'}">
+        <span class="n">${j + 1}.</span><input value="${esc(e.name)}" placeholder="${t === 'interval' || t === 'emom' ? 'Exercice' : 'Mouvement (ex. 10 pompes)'}" data-txt="${P}.exercises.${j}.name">
+        ${hasDur ? `<input type="number" min="0" inputmode="numeric" value="${e.dur || ''}" placeholder="${b.work}s" data-int="${P}.exercises.${j}.dur" title="Durée spécifique (s)">` : ''}
+        <button data-a="exup" data-i="${i}" data-j="${j}" title="Monter">↑</button><button data-a="exdel" data-i="${i}" data-j="${j}" title="Retirer">✕</button>
+        <input class="note" value="${esc(e.note || '')}" placeholder="Note (charge, consigne…)" data-txt="${P}.exercises.${j}.note"></div>`).join('');
+    return `<div class="section block" style="--bc:${TYPES[t].color}">
+      <div class="hd"><span class="num">${i + 1}</span><input class="bname" value="${esc(b.name)}" placeholder="${TYPES[t].label}" data-txt="${P}.name">
+        <button class="icon-btn" data-a="bmenu" data-i="${i}" style="width:36px;height:36px">⋮</button></div>
+      <div class="seg">${Object.entries(TYPES).map(([k, T]) => `<button data-a="btype" data-i="${i}" data-type="${k}" class="${k === t ? 'on' : ''}">${T.label}</button>`).join('')}</div>
+      ${f}
+      <div class="exs"><div class="lbl">${hasDur ? 'Exercices (en boucle à chaque tour · durée spécifique facultative)' : 'Mouvements à enchaîner'}</div>${exs}
+        <button class="btn small block" data-a="exadd" data-i="${i}">＋ Ajouter un exercice</button></div>
+      ${i < nb - 1 ? `<div class="fld" style="margin-top:14px"><label><span class="dot" style="background:var(--blockrest)"></span> Repos avant le bloc suivant</label>${stepHTML(P + '.restAfter')}</div>` : ''}
+    </div>`;
+  }).join('');
+  $$('#blocks .tstep').forEach(el => bindStep(el, () => getP(draft, el.dataset.path), v => { setP(draft, el.dataset.path, v); changed(/\.sets$/.test(el.dataset.path)); }));
+  $('#f-represt-wrap').classList.toggle('hidden', draft.repeat < 2);
+  updateTotal();
+}
+$('#blocks').addEventListener('input', e => {
+  const t = e.target;
+  if (t.dataset.txt) { setP(draft, t.dataset.txt, t.value); changed(); }
+  else if (t.dataset.int !== undefined) { setP(draft, t.dataset.int, Math.max(0, parseInt(t.value) || 0)); changed(); }
+});
+$('#blocks').addEventListener('change', e => { if (e.target.dataset.chk) { setP(draft, e.target.dataset.chk, e.target.checked); changed(); } });
+$('#blocks').addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const i = +b.dataset.i, j = +b.dataset.j, bl = draft.blocks[i];
+  switch (b.dataset.a) {
+    case 'btype': { const nt = b.dataset.type; if (nt === bl.type) return; const d = newBlock(nt);
+      Object.assign(bl, { type: nt, work: d.work, rest: d.rest, rounds: d.rounds }); changed(true); break; }
+    case 'exadd': bl.exercises.push({ name: '', dur: 0, note: '' });
+      if (bl.type !== 'amrap' && bl.type !== 'fortime' && bl.exercises.length > bl.rounds) bl.rounds = bl.exercises.length;
+      changed(true); $$(`#blocks .section`)[i].querySelector('.ex:last-of-type input')?.focus(); break;
+    case 'exdel': bl.exercises.splice(j, 1); changed(true); break;
+    case 'exup': if (j > 0) { [bl.exercises[j - 1], bl.exercises[j]] = [bl.exercises[j], bl.exercises[j - 1]]; changed(true); } break;
+    case 'bmenu': sheet(`<h4>Bloc ${i + 1} · ${esc(bl.name || TYPES[bl.type].label)}</h4>
+        <button class="item" data-x="up" ${i === 0 ? 'disabled style="opacity:.4"' : ''}>↑&nbsp; Monter</button>
+        <button class="item" data-x="down" ${i === draft.blocks.length - 1 ? 'disabled style="opacity:.4"' : ''}>↓&nbsp; Descendre</button>
+        <button class="item" data-x="dup">⧉&nbsp; Dupliquer le bloc</button>
+        <button class="item red" data-x="del" ${draft.blocks.length < 2 ? 'disabled style="opacity:.4"' : ''}>🗑&nbsp; Supprimer le bloc</button>`, (el, close) =>
+        el.querySelectorAll('[data-x]').forEach(x => x.onclick = () => { close(); const B = draft.blocks;
+          if (x.dataset.x === 'up' && i > 0) [B[i - 1], B[i]] = [B[i], B[i - 1]];
+          if (x.dataset.x === 'down' && i < B.length - 1) [B[i + 1], B[i]] = [B[i], B[i + 1]];
+          if (x.dataset.x === 'dup') B.splice(i + 1, 0, { ...clone(bl), id: uid() });
+          if (x.dataset.x === 'del' && B.length > 1) { const old = B.splice(i, 1)[0]; toast('Bloc supprimé', 'Annuler', () => { B.splice(i, 0, old); changed(true); }); }
+          changed(true); })); break;
+  }
+});
+$$('#addblock button').forEach(b => b.onclick = () => { draft.blocks.push(newBlock(b.dataset.type)); changed(true);
+  setTimeout(() => $('#blocks .section:last-child')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); });
+function updateTotal() {
+  $('#f-total').textContent = fmt(totalOf(draft));
+  $('#f-timeline').innerHTML = timelineHTML(draft);
+  $('#f-represt-wrap').classList.toggle('hidden', draft.repeat < 2);
+  draft.blocks.forEach((b, i) => $$(`[data-int^="blocks.${i}.exercises"]`).forEach(x => x.placeholder = b.work + 's'));
+}
+function saveDraft() {
+  if (totalOf(draft) <= 0) { toast('La séance est vide'); return false; }
+  if (!draft.name.trim()) draft.name = draft.blocks.length === 1 ? (draft.blocks[0].name || blockDesc(draft.blocks[0])) : `Séance ${draft.blocks.length} blocs`;
+  draft.blocks.forEach(b => b.exercises = b.exercises.filter(e => e.name.trim()));
+  const i = profiles.findIndex(x => x.id === draft.id);
+  if (i >= 0) profiles[i] = clone(draft); else profiles.unshift(clone(draft));
+  saveProfiles(); draftDirty = false; toast('Séance enregistrée'); return true;
+}
+$('#edit-save').onclick = () => { if (saveDraft()) show('home'); };
+$('#edit-back').onclick = () => draftDirty
+  ? confirmSheet('Quitter sans enregistrer ?', 'Les modifications seront perdues.', 'Quitter', () => show('home'))
+  : show('home');
+$('#edit-start').onclick = () => { if (totalOf(draft) > 0) startRun(clone(draft), true); };
+$('#edit-preview').onclick = () => stepsSheet(buildPhases(draft), -1);
+
+/* ================= Runner ================= */
+let runState = null, rafId = 0, tickTimer = 0;
+const CIRC = 2 * Math.PI * 54;
+$('#run-arc').style.strokeDasharray = CIRC;
+function startRun(w, fromEditor = false) {
+  audio();
+  const phases = buildPhases(w).map(x => ({ ...x }));
+  if (!phases.length) return;
+  runState = { w, phases, idx: 0, phaseStart: 0, pausedAt: 0, paused: false, done: false, fromEditor, laps: {}, lastSec: null, active: 0, startedAt: Date.now() };
+  $('#run-title').textContent = w.name || 'Séance';
+  $('#done').classList.add('hidden');
+  $('#run').classList.remove('hidden', 'locked');
+  $('#run').classList.toggle('xxl', !!settings.xxl);
+  $('#run-lock').textContent = '🔓';
+  muted = false; $('#run-mute').textContent = '🔊';
+  bgStart(); lockScreen();
+  enterPhase(0);
+  cancelAnimationFrame(rafId); loop();
+  clearInterval(tickTimer); tickTimer = setInterval(update, 200);
+}
+const elapsedIn = () => ((runState.paused ? runState.pausedAt : performance.now()) - runState.phaseStart) / 1000;
+const totalDur = () => runState.phases.reduce((a, x) => a + x.dur, 0);
+function enterPhase(i) {
+  const s = runState;
+  if (s.phaseStart) s.active += Math.min(elapsedIn(), s.phases[s.idx].dur); // real time actually done
+  s.idx = i; s.phaseStart = performance.now(); if (s.paused) s.pausedAt = s.phaseStart;
+  s.lastSec = null; s.half = false; s.said10 = false; s.pre = false;
+  const ph = s.phases[i], P = PHASE[ph.kind];
+  $('#run').style.setProperty('--phase', P.color);
+  $('#run').classList.remove('flash'); void $('#run').offsetWidth; $('#run').classList.add('flash');
+  if (settings.beeps) snd().go(ph.kind);
+  buzz(isWork(ph.kind) ? [350] : [150, 80, 150]);
+  let msg = P.say;
+  if (ph.kind === 'work' && ph.ex) msg = ph.ex + (ph.note ? '. ' + ph.note : '');
+  else if (ph.lapable) msg = P.say + (ph.ex ? '. ' + ph.ex : '');
+  else if (ph.kind === 'setrest') msg = `Fin de la série ${ph.set}. Repos.`;
+  else if (ph.kind === 'blockrest') msg = `Bloc terminé. Récupération. Ensuite : ${ph.nextBlock}`;
+  else if ((ph.kind === 'rest' || ph.kind === 'prep') && ph.nextEx && !settings.preannounce) msg += `. Ensuite : ${ph.nextEx}`;
+  if (ph.kind === 'work' && ph.round === ph.rounds && ph.set === ph.sets && ph.rounds > 1) msg += '. Dernier tour !';
+  setTimeout(() => s === runState && say(msg), settings.beeps ? 450 : 0);
+  bgMeta(ph);
+  render();
+}
+function finish() {
+  const s = runState; if (s.done) return; s.done = true;
+  clearInterval(tickTimer); cancelAnimationFrame(rafId); unlockScreen(); bgStop();
+  if (settings.beeps) snd().end(); buzz([200, 100, 200, 100, 400]);
+  setTimeout(() => say('Séance terminée. Bravo !'), 600);
+  const h = logSession(true);
+  const laps = Object.values(s.laps).reduce((a, x) => a + x, 0);
+  $('#done-sum').innerHTML = `${esc(s.w.name || 'Séance')}<br>${fmt(h?.secs ?? totalDur())} · ${s.phases.filter(x => isWork(x.kind)).length} phases d'effort${laps ? ` · ${laps} tour${laps > 1 ? 's' : ''} compté${laps > 1 ? 's' : ''}` : ''}${s.forTime ? `<br>Chrono For Time : <b>${fmt(s.forTime)}</b>` : ''}`;
+  $('#done-rpe').innerHTML = Array.from({ length: 10 }, (_, i) => `<button data-r="${i + 1}">${i + 1}</button>`).join('');
+  $$('#done-rpe button').forEach(b => b.onclick = () => { $$('#done-rpe button').forEach(x => x.classList.toggle('on', x === b)); if (s.hist) s.hist.rpe = +b.dataset.r; saveHistory(); });
+  $('#done-note').value = '';
+  $('#run').classList.remove('locked'); $('#run-lockhint').classList.add('hidden');
+  $('#done').classList.remove('hidden');
+}
+function logSession(complete) {
+  const s = runState; if (s.hist) return s.hist;
+  const doneSecs = Math.round(s.active + Math.min(elapsedIn(), s.phases[s.idx].dur));
+  if (doneSecs < 20 && !complete) return null;
+  complete = complete && doneSecs >= totalDur() * .9; // skipped too much = partial
+  s.hist = { id: uid(), wid: s.w.id, name: s.w.name || 'Séance', date: Date.now(), secs: doneSecs, total: totalDur(), complete, color: s.w.color,
+    laps: Object.values(s.laps).reduce((a, x) => a + x, 0), forTime: s.forTime || null };
+  history.unshift(s.hist); history = history.slice(0, 500); saveHistory(); return s.hist;
+}
+function update() {
+  const s = runState; if (!s || s.done || s.paused) return;
+  let ph = s.phases[s.idx], el = elapsedIn();
+  // catch up if the page was throttled in background
+  while (el >= ph.dur) {
+    if (s.idx + 1 >= s.phases.length) return finish();
+    const over = el - ph.dur; enterPhase(s.idx + 1); s.phaseStart -= over * 1000; ph = s.phases[s.idx]; el = elapsedIn();
+  }
+  const left = ph.dur - el, sec = Math.ceil(left), cd = +settings.cdLen;
+  if (sec !== s.lastSec) {
+    s.lastSec = sec;
+    if (cd && sec <= cd && ph.dur > cd + 1) { if (sec <= 3) { snd().tick(); buzz(60); } else tone(660, .07, { vol: .3 }); }
+    const nx = s.phases[s.idx + 1];
+    if (settings.preannounce && !s.pre && nx && ph.dur >= 8 && !isWork(ph.kind) && (nx.kind === 'work' || nx.lapable) && nx.ex && sec === Math.max(cd, 3) + 3) {
+      s.pre = true; say(`Prochain : ${nx.ex}`);
+    }
+    if (settings.tenSec && isWork(ph.kind) && ph.dur >= 40 && sec === 10 && cd < 10 && !s.said10) { s.said10 = true; say('Plus que 10 secondes'); }
+    if (ph.lapable && ph.dur >= 300 && sec % 60 === 0 && sec > 0 && sec < ph.dur) say(ph.countUp ? `${Math.round(el / 60)} minutes` : `Encore ${sec / 60} minute${sec > 60 ? 's' : ''}`);
+  }
+  if (settings.halfway && ph.kind === 'work' && !s.half && el >= ph.dur / 2 && ph.dur >= 20) {
+    s.half = true; tone(1000, .1, { vol: .5 }); tone(1000, .1, { vol: .5, when: .15 }); say('Mi-parcours');
+  }
+  render();
+}
+function loop() { update(); rafId = requestAnimationFrame(loop); }
+function render() {
+  const s = runState, ph = s.phases[s.idx], P = PHASE[ph.kind];
+  const el = Math.min(elapsedIn(), ph.dur), left = ph.dur - el;
+  const before = s.phases.slice(0, s.idx).reduce((a, x) => a + x.dur, 0), tot = totalDur(), tEl = before + el;
+  const nBlocks = s.w.blocks.length;
+  $('#run-blk').textContent = ph.bi !== undefined && nBlocks > 1 ? `${ph.bname} · ${ph.bi + 1}/${nBlocks}` : (ph.bi !== undefined && ph.bname !== TYPES[ph.btype].label ? ph.bname : '');
+  $('#run-phase').textContent = P.label;
+  const showUp = ph.countUp || settings.display === 'elapsed';
+  $('#run-time').textContent = showUp ? fmt(Math.floor(el)) : fmt(Math.ceil(left - .001));
+  $('#run-ex').textContent = (ph.kind === 'work' || ph.lapable) ? (ph.ex || '') : '';
+  $('#run-note').textContent = ph.kind === 'work' ? ph.note || '' : ph.countUp ? `limite ${fmt(ph.dur)}` : '';
+  $('#run-arc').style.strokeDashoffset = CIRC * (ph.countUp ? 1 - el / ph.dur : el / ph.dur);
+  const c = [];
+  if (ph.reps > 1) c.push(['Passage', `${ph.rep}/${ph.reps}`]);
+  if (ph.rounds > 1) c.push(['Tour', `${ph.round}/${ph.rounds}`]);
+  if (ph.sets > 1) c.push(['Série', `${ph.set}/${ph.sets}`]);
+  if (ph.lapable) c.unshift(['Tours faits', s.laps[s.idx] || 0]);
+  c.splice(2); c.push(['Restant', fmt(tot - tEl)]);
+  $('#run-counters').innerHTML = c.map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('');
+  $('#run-lapbox').classList.toggle('hidden', !ph.lapable);
+  $('#run-laps').textContent = s.laps[s.idx] || 0;
+  $('#run-prog').style.width = (100 * tEl / tot) + '%';
+  $('#run-elapsed').textContent = fmt(tEl);
+  $('#run-len').textContent = '−' + fmt(tot - tEl);
+  $('#run-paused').classList.toggle('hidden', !s.paused);
+  $('#run-toggle').textContent = s.paused ? '▶' : '⏸';
+  $('#run-next-btn').textContent = ph.countUp ? '✓' : '⏭';
+  $('#run-next-btn').title = ph.countUp ? "J'ai fini" : 'Suivant';
+  $('#run').classList.toggle('lastsec', !s.paused && left <= 3 && ph.dur > 4);
+  const nx = s.phases[s.idx + 1];
+  $('#run-next').innerHTML = nx ? `<small>Ensuite :</small> <b>${nx.kind === 'work' && nx.ex ? esc(nx.ex) : PHASE[nx.kind].label}</b> · ${fmt(nx.dur)}` : `<small>Dernière ligne droite 💪</small>`;
+}
+function togglePause() {
+  const s = runState; if (!s || s.done) return;
+  if (s.paused) { s.phaseStart += performance.now() - s.pausedAt; s.paused = false; lockScreen(); say('Reprise'); try { silent?.play(); } catch {} }
+  else { s.paused = true; s.pausedAt = performance.now(); say('Pause'); }
+  if ('mediaSession' in navigator) try { navigator.mediaSession.playbackState = s.paused ? 'paused' : 'playing'; } catch {}
+  render();
+}
+function jump(d) {
+  const s = runState; if (!s || s.done) return;
+  const ph = s.phases[s.idx];
+  if (d > 0 && ph.countUp) { s.forTime = Math.round(elapsedIn()); say(`Temps : ${Math.floor(s.forTime / 60)} minutes ${s.forTime % 60}`); ph.dur = Math.max(1, s.forTime); }
+  if (d < 0 && elapsedIn() > 3) return enterPhase(s.idx);
+  const n = s.idx + d;
+  if (n < 0) enterPhase(0); else if (n >= s.phases.length) finish(); else enterPhase(n);
+}
+function adjust(sec) {
+  const s = runState; if (!s || s.done) return;
+  const ph = s.phases[s.idx]; ph.dur = Math.max(Math.ceil(elapsedIn()) + 1, ph.dur + sec); s.lastSec = null; render();
+}
+function lap(d) {
+  const s = runState; if (!s || s.done) return; const ph = s.phases[s.idx]; if (!ph.lapable) return;
+  s.laps[s.idx] = Math.max(0, (s.laps[s.idx] || 0) + d);
+  if (d > 0) { tone(1500, .08, { vol: .4 }); buzz(40); }
+  render();
+}
+function closeRun() {
+  const s = runState;
+  if (s?.hist) { const n = $('#done-note').value.trim(); if (n) { s.hist.note = n; saveHistory(); } }
+  clearInterval(tickTimer); cancelAnimationFrame(rafId); unlockScreen(); bgStop();
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  $('#run').classList.add('hidden'); $('#run-lockhint').classList.add('hidden');
+  runState = null;
+  if (currentView !== 'edit') show(currentView);
+}
+function stopRun() {
+  const s = runState; if (!s) return; if (s.done) return closeRun();
+  const wasPaused = s.paused; if (!wasPaused) togglePause();
+  confirmSheet('Arrêter la séance ?', "Votre progression sera enregistrée comme séance partielle.", 'Arrêter',
+    () => { logSession(false); closeRun(); }, () => { if (!wasPaused) togglePause(); });
+}
+$('#run-toggle').onclick = togglePause;
+$('#run-ring').onclick = () => { if (settings.tapPause && !$('#run').classList.contains('locked')) togglePause(); };
+$('#run-next-btn').onclick = () => jump(1);
+$('#run-prev').onclick = () => jump(-1);
+$('#run-plus').onclick = () => adjust(10);
+$('#run-minus').onclick = () => adjust(-10);
+$('#run-lap').onclick = () => lap(1);
+$('#run-lapundo').onclick = () => lap(-1);
+$('#run-stop').onclick = stopRun;
+$('#run-plan').onclick = () => stepsSheet(runState.phases, runState.idx, i => enterPhase(i));
+$('#run-mute').onclick = () => { muted = !muted; $('#run-mute').textContent = muted ? '🔇' : '🔊'; if (muted && 'speechSynthesis' in window) speechSynthesis.cancel(); };
+/* Lock: tap to lock, long-press to unlock */
+(() => { const b = $('#run-lock'); let t = null;
+  b.onpointerdown = () => { if (!$('#run').classList.contains('locked')) return; t = setTimeout(() => { $('#run').classList.remove('locked'); b.textContent = '🔓'; $('#run-lockhint').classList.add('hidden'); buzz(50); t = 'done'; }, 700); };
+  b.onpointerup = b.onpointerleave = () => { if (t && t !== 'done') clearTimeout(t); };
+  b.onclick = () => { if (t === 'done') { t = null; return; }
+    if ($('#run').classList.contains('locked')) { $('#run-lockhint').classList.remove('hidden'); setTimeout(() => $('#run-lockhint').classList.add('hidden'), 1800); return; }
+    $('#run').classList.add('locked'); b.textContent = '🔒'; toast('Écran verrouillé · appui long pour déverrouiller'); };
+})();
+$('#done-close').onclick = closeRun;
+$('#done-again').onclick = () => { const { w, fromEditor } = runState; closeRun(); startRun(w, fromEditor); };
+document.addEventListener('keydown', e => {
+  if (!runState || runState.done || document.querySelector('.sheet-bg')) return;
+  const k = e.key;
+  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  else if (k === 'ArrowRight') jump(1); else if (k === 'ArrowLeft') jump(-1);
+  else if (k === 'Escape') stopRun(); else if (k === 't' || k === 'T') lap(1);
+  else if (k === '+') adjust(10); else if (k === '-') adjust(-10);
+});
+
+/* ================= History ================= */
+const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+function renderHistory() {
+  const now = Date.now(), byDay = {};
+  history.forEach(h => byDay[dayKey(h.date)] = (byDay[dayKey(h.date)] || 0) + h.secs);
+  $('#st-sessions').textContent = history.length;
+  $('#st-time').textContent = Math.round(history.reduce((a, h) => a + h.secs, 0) / 60);
+  $('#st-week').textContent = history.filter(h => h.date > now - 7 * 864e5).length;
+  let streak = 0, d = new Date(); d.setHours(12);
+  if (!byDay[dayKey(d)]) d.setDate(d.getDate() - 1);
+  while (byDay[dayKey(d)]) { streak++; d.setDate(d.getDate() - 1); }
+  $('#st-streak').textContent = streak;
+  // heatmap: 12 weeks, columns = weeks (Mon..Sun)
+  const today = new Date(); today.setHours(12, 0, 0, 0);
+  const dow = (today.getDay() + 6) % 7, start = new Date(today); start.setDate(today.getDate() - dow - 77);
+  let cells = '';
+  for (let i = 0; i < 84; i++) {
+    const c = new Date(start); c.setDate(start.getDate() + i);
+    const m = (byDay[dayKey(c)] || 0) / 60, fut = c > today;
+    const a = m ? clamp(.3 + m / 40, .3, 1) : 0;
+    cells += `<i title="${c.toLocaleDateString('fr-FR')} · ${Math.round(m)} min" style="${fut ? 'opacity:.25' : a ? `background:color-mix(in srgb, var(--accent) ${Math.round(a * 100)}%, var(--panel2))` : ''}"></i>`;
+  }
+  $('#heat').innerHTML = cells;
+  $('#hist-list').innerHTML = history.length ? history.slice(0, 60).map(h => {
+    const d = new Date(h.date), can = profiles.some(p => p.id === h.wid);
+    return `<div class="hist" style="--c:${h.color || 'var(--accent)'}"><div class="t"><b>${esc(h.name)}</b>
+      <div class="d">${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · ${fmt(h.secs)}${h.laps ? ` · ${h.laps} tours` : ''}${h.forTime ? ` · chrono ${fmt(h.forTime)}` : ''}${h.rpe ? ` · effort ${h.rpe}/10` : ''}</div>
+      ${h.note ? `<div class="nt">« ${esc(h.note)} »</div>` : ''}</div>
+      <span class="badge ${h.complete ? 'ok' : 'part'}">${h.complete ? 'Terminée' : Math.round(100 * h.secs / h.total) + ' %'}</span>
+      ${can ? `<button class="icon-btn" data-wid="${h.wid}" title="Refaire" style="width:36px;height:36px">↻</button>` : ''}</div>`;
+  }).join('') : `<div class="empty">Aucune séance pour l'instant.<br>Lancez un minuteur pour commencer !</div>`;
+  $$('#hist-list [data-wid]').forEach(b => b.onclick = () => startRun(profiles.find(p => p.id === b.dataset.wid)));
+}
+$('#hist-clear').onclick = () => { if (history.length) confirmSheet("Effacer l'historique ?", 'Toutes les séances enregistrées seront supprimées.', 'Effacer', () => { history = []; saveHistory(); renderHistory(); }); };
+
+/* ================= Settings ================= */
+function renderSettings() { $$('[data-s]').forEach(i => { const k = i.dataset.s; if (i.type === 'checkbox') i.checked = !!settings[k]; else i.value = String(settings[k]); }); }
+$$('[data-s]').forEach(i => i.addEventListener(i.type === 'range' ? 'input' : 'change', () => {
+  const k = i.dataset.s; settings[k] = i.type === 'checkbox' ? i.checked : i.type === 'range' ? +i.value : i.value;
+  store.set('settings', settings);
+  if (k === 'sound') { audio(); SOUNDS[settings.sound].go('work'); }
+  if (k === 'theme') applyTheme();
+  if (k === 'rate') say('Effort : pompes', true);
+}));
+$('#test-sound').onclick = () => { audio(); const S = snd(); [0, 1, 2].forEach(i => setTimeout(S.tick, i * 1000)); setTimeout(() => S.go('work'), 3000); setTimeout(() => say('Pompes. Dernier tour !', true), 3500); };
+$('#export').onclick = () => {
+  const blob = new Blob([JSON.stringify({ app: 'SportClock', version: 2, profiles, settings, history }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `sportclock-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('#import').onclick = () => $('#import-file').click();
+$('#import-file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text()); if (!Array.isArray(data.profiles)) throw 0;
+    const ids = new Set(profiles.map(p => p.id));
+    data.profiles.forEach(p => { p = migrate(p); if (ids.has(p.id)) p.id = uid(); profiles.push(p); });
+    if (Array.isArray(data.history)) { const hid = new Set(history.map(h => h.id)); history = [...history, ...data.history.filter(h => !hid.has(h.id))].sort((a, b) => b.date - a.date); saveHistory(); }
+    saveProfiles(); toast(`${data.profiles.length} séance(s) importée(s)`);
+  } catch { toast('Fichier invalide'); }
+  e.target.value = '';
+};
+
+/* ================= Boot ================= */
+applyTheme();
+show('home');
+checkHash();
+window.addEventListener('hashchange', checkHash);
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
