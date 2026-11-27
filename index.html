@@ -400,7 +400,7 @@
   #run .chips { display: flex; gap: 8px; flex: 1; }
   #run .chips button { flex: 1; min-height: 46px; border-radius: 12px; background: var(--panel); color: var(--muted); font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   #run .progress { height: 4px; background: var(--panel2); border-radius: 2px; overflow: hidden; margin: 14px 0 6px; }
-  #run .progress div { height: 100%; background: var(--text); width: 0; }
+  #run .progress div { height: 100%; background: var(--text); transform: scaleX(0); transform-origin: left; }
   #run .times { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   #run .controls { display: flex; justify-content: center; align-items: center; gap: 30px; margin-top: 10px; }
   #run .controls button { width: 64px; height: 64px; border-radius: 50%; background: var(--panel); color: var(--text); font-size: 22px; display: grid; place-items: center; }
@@ -774,8 +774,8 @@ const fmt = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600
 const fmtH = s => s < 60 ? `${s} s` : (s % 60 ? fmt(s) : `${s / 60} min`);
 /* "90" = 90 s; "1:30", "1.30" and "1,30" = 1 min 30 (numeric keypads have no colon). */
 const parseTime = v => { v = String(v).trim(); if (!v) return NaN;
-  if (/[:.,]/.test(v)) { const p = v.split(/[:.,]/).map(Number); return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + (p[1] || 0); }
-  return Math.round(parseFloat(v)); };
+  const p = v.split(/[:.,]/).map(Number);
+  return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p.length > 1 ? p[0] * 60 + (p[1] || 0) : Math.round(parseFloat(v)); };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ic = (n, c = '') => `<svg class="ic ${c}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const setIc = (el, n) => { if (el.dataset.ic === n) return; el.dataset.ic = n; const u = el.querySelector('.ic use');
@@ -914,11 +914,9 @@ function buildPhases(w) {
           const wd = e && e.dur > 0 ? +e.dur : b.work;
           const pos = { round: r, rounds, set: s, sets };
           if (wd > 0) out.push({ ...base, ...pos, kind: 'work', dur: wd, ex: e?.name || '', note: e?.note || '' });
-          if (b.type === 'emom') { if (r === rounds && s < sets && b.setRest > 0) out.push({ ...base, ...pos, kind: 'setrest', dur: b.setRest }); continue; }
-          const lastR = r === rounds, lastS = s === sets;
-          if (lastR && !lastS) { if (b.setRest > 0) out.push({ ...base, ...pos, kind: 'setrest', dur: b.setRest }); else if (b.rest > 0) out.push({ ...base, ...pos, kind: 'rest', dur: b.rest }); }
-          else if (!lastR && b.rest > 0) out.push({ ...base, ...pos, kind: 'rest', dur: b.rest });
-          else if (lastR && lastS && !b.skipLastRest && b.rest > 0) out.push({ ...base, ...pos, kind: 'rest', dur: b.rest });
+          const lastR = r === rounds, lastS = s === sets, rest = b.type === 'emom' ? 0 : b.rest; // EMOM: the recovery is inside the interval
+          if (lastR && !lastS && b.setRest > 0) out.push({ ...base, ...pos, kind: 'setrest', dur: b.setRest });
+          else if (rest > 0 && !(lastR && lastS && b.skipLastRest)) out.push({ ...base, ...pos, kind: 'rest', dur: rest });
         }
       }
       const lastBlock = bi === nb - 1;
@@ -1108,10 +1106,10 @@ function showQuick() {
 }
 /* A button that repeats while it is held down. The repeat stops by itself if the button leaves the page:
    a removed button never receives the release, and its timer would otherwise run forever. */
-function holdable(b, once) { let rep = null, held = false;
-  const stop = () => { clearTimeout(rep); rep = null; };
+function holdable(b, once) { let rep, held = false;
+  const stop = () => clearTimeout(rep);
   b.onclick = () => { if (held) { held = false; return; } once(); };
-  b.onpointerdown = () => { stop(); held = false; rep = setTimeout(function r() { if (!b.isConnected) return stop(); held = true; once(); rep = setTimeout(r, 90); }, 450); };
+  b.onpointerdown = () => { stop(); held = false; rep = setTimeout(function r() { if (!b.isConnected) return; held = true; once(); rep = setTimeout(r, 90); }, 450); };
   b.onpointerup = b.onpointerleave = b.onpointercancel = stop;
 }
 $$('.qstep').forEach(el => { const k = el.dataset.q, inp = el.querySelector('input');
@@ -1258,8 +1256,9 @@ async function share(p) {
   if (navigator.share) { try { await navigator.share({ title: p.name, text: `Ma séance « ${p.name} » sur SportClock`, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
   try { await navigator.clipboard.writeText(url); toast('Lien copié dans le presse-papiers'); } catch { prompt('Copiez ce lien :', url); }
 }
+const SHARED = /^#w=(.+)$/; // a shared workout travels in the address, after the #
 function checkHash() {
-  const m = location.hash.match(/^#w=(.+)$/); if (!m) return;
+  const m = location.hash.match(SHARED); if (!m) return;
   history_replace();
   try {
     const w = migrate({ ...dec(m[1]), id: uid(), v: 2 });
@@ -1293,13 +1292,15 @@ function renderBlocks() {
   const nb = draft.blocks.length;
   $('#blocks').innerHTML = draft.blocks.map((b, i) => {
     const P = `blocks.${i}`, t = b.type, hasDur = t === 'interval' || t === 'emom';
+    // shown only with several sets: updateTotal() hides it otherwise
+    const setRestFld = wide => `<div class="fld" data-sr="${i}"${wide ? ' style="grid-column:1/3"' : ''}><label><span class="dot" style="background:var(--setrest)"></span> Repos entre séries</label>${stepHTML(P + '.setRest')}</div>`;
     let f = '';
     if (t === 'interval') f = `<div class="grid2">
         <div class="fld"><label><span class="dot" style="background:var(--work)"></span> Effort</label>${stepHTML(P + '.work')}</div>
         <div class="fld"><label><span class="dot" style="background:var(--rest)"></span> Repos</label>${stepHTML(P + '.rest')}</div>
         <div class="fld"><label>Tours</label>${stepHTML(P + '.rounds', 'num', 1, 99)}</div>
         <div class="fld"><label>Séries</label>${stepHTML(P + '.sets', 'num', 1, 20)}</div>
-        <div class="fld${b.sets > 1 ? '' : ' hidden'}" data-sr="${i}" style="grid-column:1/3"><label><span class="dot" style="background:var(--setrest)"></span> Repos entre séries</label>${stepHTML(P + '.setRest')}</div></div>
+        ${setRestFld(true)}</div>
         <label class="toggle-row"><span><b>Pas de repos après le dernier tour</b><small>On enchaîne directement sur la suite</small></span><span class="switch"><input type="checkbox" data-chk="${P}.skipLastRest" ${b.skipLastRest ? 'checked' : ''}><span></span></span></label>`;
     else if (t === 'reps') f = `<div class="grid2">
         <div class="fld"><label>Séries par exercice</label>${stepHTML(P + '.sets', 'num', 1, 20)}</div>
@@ -1310,7 +1311,7 @@ function renderBlocks() {
         <div class="fld"><label>Toutes les</label>${stepHTML(P + '.work')}</div>
         <div class="fld"><label>Nombre de tours</label>${stepHTML(P + '.rounds', 'num', 1, 99)}</div>
         <div class="fld"><label>Séries</label>${stepHTML(P + '.sets', 'num', 1, 20)}</div>
-        <div class="fld${b.sets > 1 ? '' : ' hidden'}" data-sr="${i}"><label><span class="dot" style="background:var(--setrest)"></span> Repos entre séries</label>${stepHTML(P + '.setRest')}</div></div>
+        ${setRestFld()}</div>
         <p class="hint">Faites le travail demandé au début de chaque intervalle ; le temps restant sert de récupération.</p>`;
     else if (t === 'amrap') f = `<div class="fld"><label>Durée</label>${stepHTML(P + '.work')}</div>
         <p class="hint">Un maximum de tours dans le temps imparti. Un bouton « +1 tour » permet de compter pendant la séance.</p>`;
@@ -1413,7 +1414,7 @@ function startRun(w, fromEditor = false, resume = null) {
     if (Array.isArray(resume.durs) && resume.durs.length === phases.length) resume.durs.forEach((d, i) => phases[i].dur = num(d, phases[i].dur, 1, 86400));
     Object.entries(resume.laps || {}).forEach(([k, v]) => s.laps[num(k, 0, 0, phases.length - 1)] = num(v, 0, 0, 9999));
     s.active = num(resume.active, 0, 0, 1e6); s.forTime = resume.forTime ? num(resume.forTime, 0, 0, 1e6) : null;
-    s.quiet = true; enterPhase(num(resume.idx, 0, 0, phases.length - 1)); s.quiet = false;
+    enterPhase(num(resume.idx, 0, 0, phases.length - 1), true);
     s.phaseStart = Date.now() - num(resume.el, 0, 0, 86400) * 1000; s.paused = true; s.pausedAt = Date.now();
     render();
   } else enterPhase(0);
@@ -1423,7 +1424,7 @@ function startRun(w, fromEditor = false, resume = null) {
 const elapsedIn = () => ((runState.paused ? runState.pausedAt : Date.now()) - runState.phaseStart) / 1000;
 const totalDur = () => runState.phases.reduce((a, x) => a + x.dur, 0);
 const repsText = q => q ? (/^\d+$/.test(q) ? `${q} répétitions` : q) : '';
-function enterPhase(i) {
+function enterPhase(i, quiet) { // quiet: no flash, sound, vibration or voice
   const s = runState;
   if (s.alarm) { s.alarm = null; $('#run-alarm').classList.add('hidden'); }
   if (s.phaseStart) s.active += Math.min(elapsedIn(), s.phases[s.idx].dur); // real time actually done
@@ -1431,7 +1432,7 @@ function enterPhase(i) {
   s.lastSec = null; s.half = false; s.said10 = false; s.pre = false;
   const ph = s.phases[i], P = PHASE[ph.kind];
   $('#run').style.setProperty('--phase', P.color);
-  if (!s.quiet) {
+  if (!quiet) {
     $('#run').classList.remove('flash'); void $('#run').offsetWidth; $('#run').classList.add('flash');
     if (settings.beeps) snd().go(ph.kind);
     buzz(isWork(ph.kind) ? [350] : [150, 80, 150]);
@@ -1481,8 +1482,8 @@ function update() {
     if (s.idx + 1 >= s.phases.length) return finish();
     if (settings.waitTap && ph.kind !== 'prep') return ring(el - ph.dur); // alarm, then wait for the user
     const over = el - ph.dur, nx = s.phases[s.idx + 1];
-    s.quiet = !nx.manual && over >= nx.dur; // the next phase is over too (the page was asleep): cross it without sound or voice
-    enterPhase(s.idx + 1); s.quiet = false; s.phaseStart -= over * 1000; ph = s.phases[s.idx]; el = elapsedIn();
+    enterPhase(s.idx + 1, !nx.manual && over >= nx.dur); // quiet when the next phase is over too (the page was asleep)
+    s.phaseStart -= over * 1000; ph = s.phases[s.idx]; el = elapsedIn();
   }
   if (Date.now() - s.snapAt > 5000) saveSnap();
   if (ph.manual) return render();
@@ -1523,16 +1524,16 @@ function ring(over) {
 function ackAlarm() { const s = runState; if (s?.alarm && !s.done) enterPhase(s.idx + 1); }
 $('#run-alarm').onclick = ackAlarm;
 $('#alarm-stop').onclick = e => { e.stopPropagation(); stopRun(); };
-/* Every animation frame only the two progress bars move. The logic and the rest of the screen run when the displayed second changes
-   (the 200 ms timer does the same when frames are not delivered, e.g. page in the background). */
+/* Every animation frame only the two progress bars move (transforms: no layout). The logic and the rest of the screen run when the
+   displayed second changes, and on the 200 ms timer, which also keeps the session going when frames are not delivered (page in the background). */
 function frame() {
   const s = runState, ph = s.phases[s.idx], el = Math.min(elapsedIn(), ph.dur);
   $('#run-arc').style.transform = `scaleX(${ph.manual ? 1 : ph.countUp ? el / ph.dur : 1 - el / ph.dur})`;
-  $('#run-prog').style.width = (100 * (s.tBefore + el) / s.tTot) + '%';
+  $('#run-prog').style.transform = `scaleX(${(s.tBefore + el) / s.tTot})`;
 }
 function loop() {
-  rafId = requestAnimationFrame(loop);
-  const s = runState; if (!s || s.done || s.paused) return;
+  const s = runState; if (!s || s.done || s.paused) return; // nothing moves while paused: togglePause() starts the loop again
+  rafId = requestAnimationFrame(loop); // asked before update(), so that finish() can cancel it
   const ph = s.phases[s.idx], el = elapsedIn();
   const mark = ph.manual ? Math.floor(el) : el >= ph.dur ? -1 : Math.ceil(ph.dur - el); // -1: the phase is over
   if (mark !== s.mark || mark < 0) { s.mark = mark; update(); } else frame();
@@ -1585,6 +1586,7 @@ function togglePause() {
   else { s.paused = true; s.pausedAt = Date.now(); say('Pause'); }
   if ('mediaSession' in navigator) try { navigator.mediaSession.playbackState = s.paused ? 'paused' : 'playing'; } catch {}
   saveSnap(); render();
+  cancelAnimationFrame(rafId); loop();
 }
 function jump(d) {
   const s = runState; if (!s || s.done) return;
@@ -1695,16 +1697,16 @@ function handleBack() {
   if (currentView !== 'home') { show('home'); return true; }
   return false;
 }
-let backArmed = false, softArmed = false;
-const armBack = () => { try { window.history.pushState({ sc: 1 }, ''); backArmed = true; } catch {} };
+let backArmed = false; // a guard entry added during a real tap is in place
+const armBack = byTap => { try { window.history.pushState({ sc: 1 }, ''); backArmed = byTap; } catch {} };
 window.addEventListener('popstate', () => {
-  if (/^#w=/.test(location.hash)) return; // a shared link arriving while the app is open also fires popstate: checkHash handles it
+  if (SHARED.test(location.hash)) return; // a shared link arriving while the app is open also fires popstate: checkHash handles it
   backArmed = false;
   if (!handleBack()) return window.history.back();
-  armBack(); softArmed = true; // re-arm at once so a second back in a row is caught too
+  armBack(false); // re-arm at once so a second back in a row is caught too
 });
 // Browsers may ignore an entry added without a tap, so the next real tap arms again.
-document.addEventListener('pointerdown', () => { if (!backArmed || softArmed) { armBack(); softArmed = false; } }, true);
+document.addEventListener('pointerdown', () => { if (!backArmed) armBack(true); }, true);
 
 /* ================= Progression (stats, chart, calendar, journal) ================= */
 const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };

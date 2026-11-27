@@ -15,8 +15,9 @@ self.addEventListener('fetch', e => {
   // while the download carries on in the background and refreshes the copy for the next launch.
   const net = fetch(e.request);
   const copy = net.then(r => r.ok ? r.clone() : null); // cloned at once, before the page starts reading the answer
-  e.waitUntil(Promise.all([caches.open(CACHE), copy]).then(([cache, c]) => c && cache.put(e.request, c)).catch(() => {}));
-  e.respondWith(caches.open(CACHE).then(cache => cache.match(e.request, { ignoreSearch: true })).then(cached => {
+  const opened = caches.open(CACHE);
+  e.waitUntil(Promise.all([opened, copy]).then(([cache, c]) => c && cache.put(e.request, c)).catch(() => {}));
+  e.respondWith(opened.then(cache => cache.match(e.request, { ignoreSearch: true })).then(cached => {
     if (!cached) return net; // nothing saved yet: the network is the only source
     return Promise.race([net.then(r => r.ok ? r : cached, () => cached), new Promise(done => setTimeout(() => done(cached), PATIENCE))]);
   }));
