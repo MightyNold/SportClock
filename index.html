@@ -313,6 +313,7 @@
   .sheet .item.red, .sheet .item.red > .ic { color: var(--work); }
   .item.type { padding: 10px 6px; }
   .item.type .chk { font-size: 18px; }
+  .item.red .tic { color: inherit; }
   .steps { list-style: none; margin: 0; padding: 0; }
   .steps li { display: flex; align-items: center; gap: 10px; padding: 11px 8px; border-radius: 10px; cursor: pointer; font-size: 15px; }
   .steps li.cur { background: var(--panel2); font-weight: 700; }
@@ -946,7 +947,7 @@ const timelineHTML = w => { const ph = buildPhases(w), t = ph.reduce((a, x) => a
 /* ================= Audio / voice / vibration ================= */
 let actx = null, muted = false;
 function audio() {
-  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch {}
+  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state !== 'running') actx.resume().catch(() => {}); } catch {}
   return actx;
 }
 function tone(freq, dur, { type = 'sine', vol = 1, when = 0, slide = 0 } = {}) {
@@ -992,20 +993,25 @@ let wakeLock = null;
 async function lockScreen() { if (!settings.wakelock || !('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
   try { wakeLock = await navigator.wakeLock.request('screen'); } catch {} }
 function unlockScreen() { if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; } }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && runState && !runState.done) { lockScreen(); update(); } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && runState && !runState.done) { lockScreen(); bgWake(); update(); } });
 let silent = null;
 function silentUrl() { const sr = 8000, n = sr * 2, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
   const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
   w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
   v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
   return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })); }
+/* Starts again what the phone may have cut while another app had the sound: the beeps, and the silent track that keeps the page alive. */
+function bgWake() { audio(); if (settings.background) try { silent?.play().catch(() => {}); } catch {} }
 function bgStart() {
   if (!settings.background) return;
-  try { if (!silent) { silent = new Audio(silentUrl()); silent.loop = true; } silent.play().catch(() => {}); } catch {}
+  if (!silent) try { silent = new Audio(silentUrl()); silent.loop = true; } catch {}
+  bgWake();
   if ('mediaSession' in navigator) try {
     const ms = navigator.mediaSession;
-    ms.setActionHandler('play', () => runState?.paused && togglePause());
-    ms.setActionHandler('pause', () => runState && !runState.paused && togglePause());
+    ms.setActionHandler('play', () => { bgWake(); if (runState?.paused) togglePause(); });
+    // A real pause command (lock screen, headset) leaves the silent track playing. When the phone itself has cut it,
+    // another app has taken the sound: that is not a request to pause the session.
+    ms.setActionHandler('pause', () => setTimeout(() => { if (runState && !runState.paused && silent && !silent.paused) togglePause(); }, 250));
     ms.setActionHandler('nexttrack', () => jump(1));
     ms.setActionHandler('previoustrack', () => jump(-1));
   } catch {}
@@ -1399,7 +1405,7 @@ $('#edit-preview').onclick = () => stepsSheet(draft, buildPhases(draft), -1);
 
 /* ================= Runner ================= */
 let runState = null, rafId = 0, tickTimer = 0;
-function startRun(w, fromEditor = false, resume = null) {
+function startRun(w, fromEditor = false, resume = null, live = false) {
   audio();
   const phases = buildPhases(w).map(x => ({ ...x }));
   if (!phases.length) return;
@@ -1410,12 +1416,14 @@ function startRun(w, fromEditor = false, resume = null) {
   setIc($('#run-lock'), 'unlock');
   muted = false; setIc($('#run-mute'), 'sound');
   bgStart(); lockScreen();
-  if (resume) { // restore an interrupted session, paused exactly where it stopped
+  if (resume) { // restore an interrupted session: paused exactly where it stopped, or (live) as if the clock had never stopped
     if (Array.isArray(resume.durs) && resume.durs.length === phases.length) resume.durs.forEach((d, i) => phases[i].dur = num(d, phases[i].dur, 1, 86400));
     Object.entries(resume.laps || {}).forEach(([k, v]) => s.laps[num(k, 0, 0, phases.length - 1)] = num(v, 0, 0, 9999));
     s.active = num(resume.active, 0, 0, 1e6); s.forTime = resume.forTime ? num(resume.forTime, 0, 0, 1e6) : null;
     enterPhase(num(resume.idx, 0, 0, phases.length - 1), true);
-    s.phaseStart = Date.now() - num(resume.el, 0, 0, 86400) * 1000; s.paused = true; s.pausedAt = Date.now();
+    s.phaseStart = Date.now() - num(resume.el, 0, 0, 86400) * 1000;
+    if (live) s.phaseStart -= clamp(Date.now() - resume.at, 0, 6 * 3600e3) || 0; // update() then walks through what happened meanwhile
+    else { s.paused = true; s.pausedAt = Date.now(); }
     render();
   } else enterPhase(0);
   cancelAnimationFrame(rafId); loop();
@@ -1582,7 +1590,7 @@ function render() {
 }
 function togglePause() {
   const s = runState; if (!s || s.done) return;
-  if (s.paused) { s.phaseStart += Date.now() - s.pausedAt; s.paused = false; lockScreen(); say('Reprise'); try { if (settings.background) silent?.play(); } catch {} }
+  if (s.paused) { s.phaseStart += Date.now() - s.pausedAt; s.paused = false; lockScreen(); say('Reprise'); bgWake(); }
   else { s.paused = true; s.pausedAt = Date.now(); say('Pause'); }
   if ('mediaSession' in navigator) try { navigator.mediaSession.playbackState = s.paused ? 'paused' : 'playing'; } catch {}
   saveSnap(); render();
@@ -1627,7 +1635,7 @@ function stopRun() {
 /* Session in progress is saved as it goes, so a reload, a phone call or a closed app does not lose it. */
 function saveSnap() {
   const s = runState; if (!s || s.done || s.fromEditor) return; s.snapAt = Date.now();
-  store.set('run', { w: s.w, idx: s.idx, el: Math.round(elapsedIn()), laps: s.laps, active: Math.round(s.active), durs: s.phases.map(p => p.dur), forTime: s.forTime || null, at: Date.now() });
+  store.set('run', { w: s.w, idx: s.idx, el: Math.round(elapsedIn()), laps: s.laps, active: Math.round(s.active), durs: s.phases.map(p => p.dur), forTime: s.forTime || null, paused: s.paused, at: Date.now() });
 }
 function clearSnap() { try { localStorage.removeItem('sc_run'); } catch {} }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveSnap(); });
@@ -1635,13 +1643,19 @@ window.addEventListener('pagehide', saveSnap);
 function offerResume() {
   const sn = store.get('run', null); if (!sn) return;
   if (!sn.w || !(Date.now() - sn.at < 6 * 3600e3)) return clearSnap();
-  const w = migrate(sn.w), n = buildPhases(w).length, i = num(sn.idx, 0, 0, 1e4), mins = Math.round((Date.now() - sn.at) / 6e4);
+  const w = migrate(sn.w), ph = buildPhases(w), n = ph.length, i = num(sn.idx, 0, 0, 1e4), away = Math.max(0, Date.now() - sn.at) / 1000, mins = Math.round(away / 60);
   if (i >= n) return clearSnap();
+  // "Real time" = as if the app had never been closed (the phone closes it when another app needs the memory).
+  // Offered when the session was running and would not be over by now.
+  const durs = Array.isArray(sn.durs) && sn.durs.length === n ? sn.durs : [];
+  let left = -num(sn.el, 0, 0, 86400), k = i; for (; k < n && !ph[k].manual; k++) left += num(durs[k], ph[k].dur, 1, 86400);
+  const live = !sn.paused && (k < n || settings.waitTap || away < left);
+  const opt = (a, icon, title, text, cls = '') => `<button class="item type${cls}" data-a="${a}"><span class="tic">${ic(icon)}</span><span class="tx"><b>${title}</b>${text ? `<small>${text}</small>` : ''}</span></button>`;
   sheet(`<h4>Reprendre la séance ?</h4><p>« ${esc(w.name || 'Séance')} » a été interrompue à l'étape ${i + 1} sur ${n}, ${mins < 1 ? "à l'instant" : mins < 60 ? `il y a ${mins} min` : `il y a ${Math.round(mins / 60)} h`}.</p>
-    <div class="btn-row"><button class="btn" data-a="no">Abandonner</button><button class="btn primary" data-a="ok">${ic('play')}Reprendre</button></div>`, (el, close) => {
-    el.querySelector('[data-a=no]').onclick = () => { close(); clearSnap(); };
-    el.querySelector('[data-a=ok]').onclick = () => { close(); startRun(w, false, sn); };
-  });
+    ${live ? opt('live', 'clock', 'Reprendre en temps réel', `Comme si l'appli était restée ouverte : ${mins > 1 ? `les ${mins} min passées ailleurs sont comptées` : 'le temps passé ailleurs est compté'}.`) : ''}
+    ${opt('ok', 'play', "Reprendre où j'étais", `En pause, à l'étape ${i + 1} : le temps passé ailleurs ne compte pas.`)}
+    ${opt('no', 'x', 'Abandonner la séance', '', ' red')}`, (el, close) =>
+    el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => { close(); if (b.dataset.a === 'no') clearSnap(); else startRun(w, false, sn, b.dataset.a === 'live'); }));
 }
 
 $('#run-toggle').onclick = togglePause;
